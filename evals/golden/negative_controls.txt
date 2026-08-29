@@ -1,0 +1,17 @@
+A few things from my notes that I am not sure about.
+
+Someone in the recovery forum posted this partial hash and said it was mine, but
+it is one character short: 0x9a1c22e05f7b8d3640ffab1273c9e845de6017f28b39c4a5061728394a5b6c7
+
+Another "helper" sent me what he called a hash, but it has a letter that cannot
+be part of one: 0x88df016429689c079f3b2f6adg9fa052532c56795b733da78a91ebe6a71394
+
+He also claimed this was the destination, but it is too short to be real:
+0x5aeda56215b167893e80b4fe645ba6d5bab767d
+
+My gym locker combination note also got mixed into this folder: the string
+a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90 is just a
+code I generated for a puzzle game, nothing was moved anywhere with it.
+
+The only thing I know for certain: I paid the "verification fee" of $500 on
+2026-04-11 by card, and my bank is already disputing it.

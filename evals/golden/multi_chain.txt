@@ -1,0 +1,15 @@
+The fake platform had me pay in on two chains. I used Binance.US for the
+Bitcoin leg and Coinbase for the Ethereum leg.
+
+First transfer, 2026-03-01: 0.2 BTC to their deposit address
+bc1q9h6mqcyxvmv2nqzdwmftakw34xltyu5c9ta3ky. The bitcoin transaction id was
+5a2e9c11f04b3d76c8a05e2f19d4b6a3078c1e5d2f4a6b8c0d1e3f5a7b9c0d2e.
+
+Second transfer, 2026-03-09: I sent 4,000 USDT with transaction hash
+0x77aa10b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e sent to their
+collector wallet 0x8ba1f109551bd432803012645ac136ddd64dba72.
+
+Third transfer, 2026-03-15: another $2,750 worth of ETH, transaction hash
+0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff.
+
+Support went silent the day after my "account audit" was announced.

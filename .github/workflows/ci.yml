@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Deliberately NOT installing the [agent] extra: everything tested must
+      # run fully offline, with no model and no API key.
+      - name: Install (offline deterministic core + dev tools)
+        run: pip install -e ".[dev]"
+      - name: Unit tests
+        run: pytest -q
+      - name: Anti-invention eval gate
+        run: python evals/run_evals.py

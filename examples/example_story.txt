@@ -1,0 +1,24 @@
+I feel so stupid writing this down. In January a man calling himself "David Lin"
+messaged me on a language-exchange app and we talked every day for weeks. He said
+he traded crypto on the side and eventually showed me an investment platform at
+https://quantum-yield-pro.example.com that his "uncle" supposedly ran. His email
+was david.lin.trader@fastmail.example.
+
+I opened a Coinbase account like he told me to. On 2026-02-10 I bought and sent
+0.5 BTC from Coinbase to the deposit address he gave me, bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4.
+The Bitcoin transaction id he confirmed back to me was
+7d3f0e2ab9c14577d06e5b8a91f2c3d4e5f60718293a4b5c6d7e8f9012345678.
+
+The platform dashboard showed profits, so I kept going. On March 3, 2026 I sent
+$12,500 worth of ETH from my own wallet. The transaction hash is
+0x9a1c22e05f7b8d3640ffab1273c9e845de6017f28b39c4a5061728394a5b6c7d and it went to
+his wallet address 0x5aeda56215b167893e80b4fe645ba6d5bab767de.
+
+When I tried to withdraw, the site demanded a 20% "tax". David pressured me, and
+on 3/28/2026 I wired 5,000 dollars from my bank account to a company he called
+"Golden Harbor Trading LLC". After that the website stopped loading and he
+blocked me everywhere.
+
+Altogether I lost my savings. My sister found the IC3 website and told me to get
+everything in writing before I file. I still have all the screenshots and the
+chat logs.

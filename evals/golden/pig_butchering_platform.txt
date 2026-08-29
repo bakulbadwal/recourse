@@ -1,0 +1,12 @@
+A woman named "Amy" texted me pretending to have a wrong number and we kept
+talking for months. She got me onto a trading app that I had to install from
+https://apex-global-fx.example.org/download and her "analyst" emailed
+instructions from analyst.desk@apexglobal.example.
+
+I funded it through Crypto.com at first, then through Coinbase when she said
+fees were lower. On 2026-06-18 I transferred 9,900 USDC with transaction hash
+0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789 to the
+platform wallet 0xdeadbeef1234567890abcdef1234567890abcdef.
+
+On 2026-07-02 I sent another $6,000. There is a customer-service portal at
+https://apex-global-fx.example.org/support that still loads but nobody answers.

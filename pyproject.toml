@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "recourse"
+version = "0.1.0"
+description = "Recourse - a first-response agent for fraud victims. Deterministic evidence extraction, IC3 complaint drafting, exchange freeze-request letters, and an ordered action plan."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Bakul Badwal" }]
+keywords = ["fraud", "victim-support", "ic3", "crypto-scam", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+# Base install is deterministic-only: stdlib + dateutil. No model, no network.
+dependencies = ["python-dateutil>=2.8"]
+
+[project.optional-dependencies]
+# The agent extra pulls in the Strands Agents SDK (with its Anthropic provider extra).
+agent = ["strands-agents[anthropic]>=1.0", "strands-agents-tools>=0.1"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+recourse = "recourse.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+recourse = ["data/*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

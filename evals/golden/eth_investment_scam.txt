@@ -1,0 +1,13 @@
+I was added to a Telegram group about AI trading in February. The admin, who used
+the email quantprofits.desk@protonmail.example, convinced me to deposit through a
+site at https://ai-yield-matrix.example.net.
+
+I bought ETH on Coinbase. On 2026-02-14 I sent $8,000 worth of ETH to the address
+0x1f9840a85d5af5bf1d1762f925bdaddc4201f984. The transaction hash was
+0xb5c8bd9430b6cc87a0e2fe110ece6bf527fa4f170a4bc8cd032f768fc5219838.
+
+A week later, on 2026-02-21, they pushed me to "upgrade my tier" and I sent
+another 2,500.50 USDT. That transaction hash is
+0x4e3a3754410177e6937ef1f84bba68ea139e8d1a2258c5f85db9f1cd715a1bdd.
+
+The dashboard froze when I asked to withdraw and the admin deleted the group.

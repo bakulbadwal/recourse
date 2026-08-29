@@ -1,0 +1,20 @@
+{
+  "story": "eth_investment_scam.txt",
+  "evidence": {
+    "evm_tx_hash": [
+      "0x4e3a3754410177e6937ef1f84bba68ea139e8d1a2258c5f85db9f1cd715a1bdd",
+      "0xb5c8bd9430b6cc87a0e2fe110ece6bf527fa4f170a4bc8cd032f768fc5219838"
+    ],
+    "evm_address": ["0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"],
+    "amount": ["2500.50 USDT", "8000 USD"],
+    "date": ["2026-02-14", "2026-02-21"],
+    "url": ["https://ai-yield-matrix.example.net"],
+    "email": ["quantprofits.desk@protonmail.example"],
+    "exchange": ["coinbase"]
+  },
+  "transactions": [
+    {"amount": "8000", "currency": "USD", "date": "2026-02-14", "tx_hash": "0xb5c8bd9430b6cc87a0e2fe110ece6bf527fa4f170a4bc8cd032f768fc5219838", "destination_address": "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", "method": "Cryptocurrency"},
+    {"amount": "2500.50", "currency": "USDT", "date": "2026-02-21", "tx_hash": "0x4e3a3754410177e6937ef1f84bba68ea139e8d1a2258c5f85db9f1cd715a1bdd", "destination_address": null, "method": "Cryptocurrency"}
+  ],
+  "forbidden": []
+}

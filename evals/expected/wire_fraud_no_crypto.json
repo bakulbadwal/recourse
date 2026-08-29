@@ -1,0 +1,13 @@
+{
+  "story": "wire_fraud_no_crypto.txt",
+  "evidence": {
+    "amount": ["1850 USD", "45000 USD"],
+    "date": ["2026-05-02", "2026-05-04"],
+    "email": ["closings@secure-title.example"]
+  },
+  "transactions": [
+    {"amount": "45000", "currency": "USD", "date": "2026-05-02", "tx_hash": null, "destination_address": null, "method": "Wire Transfer"},
+    {"amount": "1850", "currency": "USD", "date": "2026-05-04", "tx_hash": null, "destination_address": null, "method": "Wire Transfer"}
+  ],
+  "forbidden": []
+}

@@ -1,0 +1,16 @@
+{
+  "story": "negative_controls.txt",
+  "evidence": {
+    "amount": ["500 USD"],
+    "date": ["2026-04-11"]
+  },
+  "transactions": [
+    {"amount": "500", "currency": "USD", "date": "2026-04-11", "tx_hash": null, "destination_address": null, "method": null}
+  ],
+  "forbidden": [
+    "0x9a1c22e05f7b8d3640ffab1273c9e845de6017f28b39c4a5061728394a5b6c7",
+    "0x88df016429689c079f3b2f6adg9fa052532c56795b733da78a91ebe6a71394",
+    "0x5aeda56215b167893e80b4fe645ba6d5bab767d",
+    "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "story": "ambiguous_dates.txt",
+  "evidence": {
+    "amount": ["1200 USD", "3400 USD"],
+    "date": ["2026-03-04", "2026-04-07", "2026-12-25"]
+  },
+  "transactions": [
+    {"amount": "1200", "currency": "USD", "date": "2026-03-04", "tx_hash": null, "destination_address": null, "method": "Wire Transfer"},
+    {"amount": "3400", "currency": "USD", "date": "2026-12-25", "tx_hash": null, "destination_address": null, "method": "Wire Transfer"}
+  ],
+  "forbidden": [],
+  "notes_contain": [
+    "Date '03/04/2026' is ambiguous"
+  ]
+}

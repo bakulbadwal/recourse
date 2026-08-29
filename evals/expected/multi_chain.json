@@ -1,0 +1,21 @@
+{
+  "story": "multi_chain.txt",
+  "evidence": {
+    "evm_tx_hash": [
+      "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff",
+      "0x77aa10b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e"
+    ],
+    "btc_txid": ["5a2e9c11f04b3d76c8a05e2f19d4b6a3078c1e5d2f4a6b8c0d1e3f5a7b9c0d2e"],
+    "evm_address": ["0x8ba1f109551bd432803012645ac136ddd64dba72"],
+    "btc_address": ["bc1q9h6mqcyxvmv2nqzdwmftakw34xltyu5c9ta3ky"],
+    "amount": ["0.2 BTC", "2750 USD", "4000 USDT"],
+    "date": ["2026-03-01", "2026-03-09", "2026-03-15"],
+    "exchange": ["binance.us", "coinbase"]
+  },
+  "transactions": [
+    {"amount": "0.2", "currency": "BTC", "date": "2026-03-01", "tx_hash": "5a2e9c11f04b3d76c8a05e2f19d4b6a3078c1e5d2f4a6b8c0d1e3f5a7b9c0d2e", "destination_address": "bc1q9h6mqcyxvmv2nqzdwmftakw34xltyu5c9ta3ky", "method": "Cryptocurrency"},
+    {"amount": "4000", "currency": "USDT", "date": "2026-03-09", "tx_hash": "0x77aa10b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e", "destination_address": "0x8ba1f109551bd432803012645ac136ddd64dba72", "method": "Cryptocurrency"},
+    {"amount": "2750", "currency": "USD", "date": "2026-03-15", "tx_hash": "0x11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff", "destination_address": null, "method": "Cryptocurrency"}
+  ],
+  "forbidden": []
+}
