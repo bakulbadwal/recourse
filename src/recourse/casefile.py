@@ -26,6 +26,7 @@ _KIND_ORDER = (
     "url",
     "email",
     "exchange",
+    "business",
     "phone",
 )
 
@@ -137,6 +138,24 @@ def _unverified_notes(
             missing.append("transaction hash/ID")
         if missing:
             notes.append(f"Transaction {i}: missing {', '.join(missing)}.")
+        if t.asset is not None and t.asset != t.currency:
+            notes.append(
+                f"Transaction {i}: the asset sent was {t.asset}, but you stated its "
+                f"value as {t.amount_verbatim or t.amount} {t.currency}. That "
+                f"{t.currency} figure is your own estimate at the time — Recourse "
+                f"never converts. Confirm the exact {t.asset} quantity from your "
+                "wallet or exchange history before filing."
+            )
+
+    business_names = [e.value for e in evidence if e.kind == "business"]
+    if business_names:
+        notes.append(
+            "Possible subject business name(s) found in your story: "
+            + "; ".join(business_names)
+            + ". These are CANDIDATES only — confirm each is the scammer's "
+            "business and not your own bank, exchange, or employer before "
+            "putting it in the IC3 'Business Name' field."
+        )
 
     missing_victim = victim.missing_fields()
     if missing_victim:
@@ -179,6 +198,7 @@ def build_casefile(
         exchanges=sorted({e.value for e in evidence if e.kind == "exchange"}),
         urls=sorted({e.value for e in evidence if e.kind == "url"}),
         emails=sorted({e.value for e in evidence if e.kind == "email"}),
+        businesses=sorted({e.value for e in evidence if e.kind == "business"}),
         victim=victim,
         unverified_notes=_unverified_notes(extraction, evidence, transactions, victim),
         created_at=created_at,

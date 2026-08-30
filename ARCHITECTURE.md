@@ -27,7 +27,12 @@ flowchart LR
    *context-gated*: they are only accepted with transaction/wallet vocabulary nearby, because a
    false positive there poisons a federal filing while a miss just lands in `unverified.md`.
    Amounts normalize to `Decimal`; dates to ISO (ambiguous slash dates read as US month/day and
-   flagged). Every extracted fact carries its exact `verbatim` source substring — the
+   flagged). An amount denominated in one thing but *paid* in another ("$12,500 worth of
+   ETH") keeps both labels — `currency: USD`, `asset: ETH` — because a crypto leg reported
+   to an exchange as "USD" is a false statement; no conversion is ever performed. Candidate
+   subject business names (a capitalized run ending in a corporate suffix) are extracted for
+   the IC3 Step 4 field but always rendered as candidates to confirm, never asserted — the
+   story may just as easily name the victim's own bank. Every extracted fact carries its exact `verbatim` source substring — the
    provenance anchor everything downstream is audited against. Facts that co-occur in a
    paragraph are grouped into `Transaction`s; lone facts are never promoted into one.
 
@@ -46,7 +51,7 @@ flowchart LR
 4. **Audit (`audit.py`) + eval gate (`evals/run_evals.py`).** The audit harvests every
    hash-like token, address, amount, and ISO date from each rendered document and verifies it
    traces to the source story (allowing two declared derivations: the summed loss total and the
-   sha256 case id). The gate runs that audit over seven golden scenarios, checks extraction
+   sha256 case id). The gate runs that audit over eight golden scenarios (including the exact story used in the demo video), checks extraction
    against hand-verified expected values exactly (both precision and recall), asserts
    negative-control lookalikes are *not* extracted, checks case-id determinism, and self-tests
    by tampering filings with invented facts that *must* be flagged. Non-zero exit on any
@@ -55,7 +60,10 @@ flowchart LR
 5. **Agent layer (`tools.py`, `agent.py`) — optional.** The same deterministic functions are
    exposed as Strands `@tool`s (imported lazily so the base install has no strands dependency).
    `build_agent()` uses the Anthropic provider when `ANTHROPIC_API_KEY` is set, else Strands'
-   Amazon Bedrock default. The system prompt forbids the model from stating any
+   Amazon Bedrock default. Each tool rebuilds the CaseFile from the story it is handed, so a
+   model that paraphrased the story between calls could produce drafts that disagree; the
+   drafting tools therefore cross-check the `case_id` and refuse to render rather than emit a
+   draft built from a different story than the case file the victim was shown. The system prompt forbids the model from stating any
    hash/amount/date not present in tool output and forbids filling in `[NOT PROVIDED]` fields.
    Because the filings are rendered by code, the model could not inject a fact into them even
    if it ignored the prompt — the prompt is a second fence, not the wall.

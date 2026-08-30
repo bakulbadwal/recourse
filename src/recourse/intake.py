@@ -105,6 +105,47 @@ WORD_AMOUNT_RE = re.compile(r"\b(?P<num>" + _NUM + r")\s(?:US\s)?dollars?\b", re
 
 _SYMBOL_TO_CODE = {"$": "USD", "€": "EUR", "£": "GBP"}
 
+# "$12,500 worth of ETH" — the NUMBER is denominated in dollars, but the ASSET
+# that actually moved is ETH. Recording only the currency labels a crypto leg
+# "USD", which reads as a bank transfer to an exchange's fraud desk sitting next
+# to an 0x transaction hash. The qualifier is captured as a separate label; it
+# never changes the amount, and no conversion is ever performed.
+ASSET_QUALIFIER_RE = re.compile(
+    r"(?P<amt>[$€£]\s?(?:" + _NUM + r")|\b(?:" + _NUM + r")\s?(?:"
+    + "|".join(FIAT_CODES) + r"))"
+    r"\s+(?:worth\s+of|worth\s+in|worth|of|in)\s+"
+    r"(?P<code>" + "|".join(CRYPTO_CODES) + r")\b"
+)
+
+# Subject business names for the IC3 form's Step 4 "Business Name" field.
+# Deliberately narrow: 1-4 capitalized words immediately followed by a corporate
+# suffix. "LP" and "Co." are excluded — they collide with initials and ordinary
+# prose, and naming an innocent company as a fraud subject is the exact class of
+# error this project refuses to make. Words are separated by a single space or a
+# single newline so a match can never span a paragraph break.
+CORPORATE_SUFFIXES = (
+    "LLC",
+    "L.L.C.",
+    "Incorporated",
+    "Inc.",
+    "Inc",
+    "Limited",
+    "Ltd.",
+    "Ltd",
+    "Corporation",
+    "Corp.",
+    "Corp",
+    "LLP",
+    "PLC",
+    "GmbH",
+    "S.A.",
+)
+BUSINESS_NAME_RE = re.compile(
+    r"\b(?:[A-Z][A-Za-z0-9&'’\-\.]*[ \n]){1,4}"
+    r"(?:" + "|".join(re.escape(s) for s in CORPORATE_SUFFIXES) + r")"
+    r"(?![A-Za-z0-9])"
+)
+
 # Date patterns. Deliberately explicit — no fuzzy parsing of arbitrary text.
 ISO_DATE_RE = re.compile(r"\b(?P<y>\d{4})-(?P<m>\d{2})-(?P<d>\d{2})\b")
 SLASH_DATE_RE = re.compile(r"\b(?P<a>\d{1,2})/(?P<b>\d{1,2})/(?P<y>\d{4})\b")
@@ -406,6 +447,51 @@ def extract_exchanges(text: str) -> list[EvidenceItem]:
     return items
 
 
+def extract_business_names(text: str) -> list[EvidenceItem]:
+    """Extract candidate subject business names (IC3 Step 4 'Business Name').
+
+    These are CANDIDATES, not confirmed subjects: a story can also name the
+    victim's own bank or exchange. Filings render them with an explicit
+    confirm-this instruction rather than asserting them. Names that contain a
+    recognized exchange, or that sit inside a URL or email address, are dropped.
+    """
+    items: list[EvidenceItem] = []
+    skip_spans = [m.span() for m in URL_RE.finditer(text)]
+    skip_spans += [m.span() for m in EMAIL_RE.finditer(text)]
+    exchange_names = {name.lower() for name in EXCHANGES}
+
+    for m in BUSINESS_NAME_RE.finditer(text):
+        if any(not (m.end() <= s or m.start() >= e) for s, e in skip_spans):
+            continue
+        verbatim = m.group(0)
+        value = " ".join(verbatim.split())
+        lowered = value.lower()
+        if any(name in lowered for name in exchange_names):
+            continue
+        items.append(
+            EvidenceItem(
+                kind="business",
+                value=value,
+                verbatim=verbatim,
+                context=_context(text, *m.span()),
+            )
+        )
+    return items
+
+
+def _asset_qualifiers(text: str) -> dict[str, str]:
+    """Map an amount's verbatim token to the crypto asset it was stated in.
+
+    '$12,500 worth of ETH' -> {'$12,500': 'ETH'}. A token qualified by two
+    different assets in one segment is ambiguous and is dropped rather than
+    guessed.
+    """
+    found: dict[str, set[str]] = {}
+    for m in ASSET_QUALIFIER_RE.finditer(text):
+        found.setdefault(m.group("amt"), set()).add(m.group("code").upper())
+    return {amt: next(iter(codes)) for amt, codes in found.items() if len(codes) == 1}
+
+
 # Paragraph-level segmentation: victims naturally describe one transfer per
 # paragraph, and hard-wrapped lines must not split a sentence's facts apart.
 _SEGMENT_SPLIT_RE = re.compile(r"\n\s*\n")
@@ -426,6 +512,7 @@ def _build_transactions(text: str) -> list[Transaction]:
     txns: list[Transaction] = []
     for seg in _segments(text):
         amounts = extract_amounts(seg)
+        qualifiers = _asset_qualifiers(seg)
         dates = extract_dates(seg)
         hash_items = [
             e
@@ -454,12 +541,14 @@ def _build_transactions(text: str) -> list[Transaction]:
             )
             amount_dec = None
             currency = None
+            asset = None
             if amt is not None:
                 num, _, code = amt.value.partition(" ")
                 amount_dec = Decimal(num)
                 currency = code or None
+                asset = qualifiers.get(amt.verbatim)
             method = None
-            if hsh is not None or (currency in CRYPTO_CODES):
+            if hsh is not None or (currency in CRYPTO_CODES) or asset is not None:
                 method = "Cryptocurrency"
             elif re.search(r"\bwire(d|s)?\b|\bwire transfer\b", seg, re.IGNORECASE):
                 method = "Wire Transfer"
@@ -468,6 +557,7 @@ def _build_transactions(text: str) -> list[Transaction]:
                     amount=amount_dec,
                     amount_verbatim=amt.verbatim if amt else None,
                     currency=currency,
+                    asset=asset,
                     date=date.value if date else None,
                     date_verbatim=date.verbatim if date else None,
                     tx_hash=hsh.value if hsh else None,
@@ -489,6 +579,7 @@ def extract(text: str) -> ExtractionResult:
     result.evidence.extend(extract_dates(text))
     result.evidence.extend(extract_urls_and_emails(text))
     result.evidence.extend(extract_exchanges(text))
+    result.evidence.extend(extract_business_names(text))
     result.transactions = _build_transactions(text)
 
     for m in SLASH_DATE_RE.finditer(text):

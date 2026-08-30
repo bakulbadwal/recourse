@@ -41,7 +41,15 @@ EXPECTED = EVALS_DIR / "expected"
 # must not appear in these at all.
 NON_QUOTING_DOCS = ("freeze_letter.md", "action_plan.md", "unverified.md")
 
-TXN_FIELDS = ("amount", "currency", "date", "tx_hash", "destination_address", "method")
+TXN_FIELDS = (
+    "amount",
+    "currency",
+    "asset",
+    "date",
+    "tx_hash",
+    "destination_address",
+    "method",
+)
 
 
 def run_scenario(expected_path: Path) -> list[str]:

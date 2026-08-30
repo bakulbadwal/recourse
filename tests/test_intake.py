@@ -3,8 +3,10 @@
 from decimal import Decimal
 
 from recourse.intake import (
+    _asset_qualifiers,
     extract,
     extract_amounts,
+    extract_business_names,
     extract_dates,
     extract_exchanges,
     extract_hashes_and_addresses,
@@ -194,3 +196,81 @@ def test_no_transaction_invented_from_loose_date():
 def test_wire_method_detected():
     result = extract("On 2026-05-02 I wired $45,000 to the escrow account.")
     assert result.transactions[0].method == "Wire Transfer"
+
+
+# --- subject business names (IC3 Step 4) ----------------------------------
+
+def test_quoted_business_name_with_corporate_suffix_extracted():
+    items = extract_business_names('a company he called "Golden Harbor Trading LLC".')
+    assert [i.value for i in items] == ["Golden Harbor Trading LLC"]
+
+
+def test_unquoted_business_name_extracted():
+    items = extract_business_names("I wired the money to Meridian Capital Partners Inc.")
+    assert [i.value for i in items] == ["Meridian Capital Partners Inc."]
+
+
+def test_business_name_wrapped_across_a_line_break_is_normalized():
+    items = extract_business_names("paid to Golden Harbor\nTrading LLC last week")
+    (item,) = items
+    assert item.value == "Golden Harbor Trading LLC"
+    assert "\n" in item.verbatim  # verbatim stays an exact slice of the source
+
+
+def test_business_name_never_spans_a_paragraph_break():
+    # A word on the far side of a blank line is a different paragraph and must
+    # not be glued onto the name.
+    items = extract_business_names("I paid Golden\n\nHarbor Trading LLC")
+    assert [i.value for i in items] == ["Harbor Trading LLC"]
+
+
+def test_capitalized_name_without_corporate_suffix_not_extracted():
+    assert extract_business_names('a man calling himself "David Lin" messaged me') == []
+
+
+def test_known_exchange_is_not_a_subject_business_candidate():
+    assert extract_business_names("I opened an account with Coinbase Inc last year") == []
+
+
+def test_business_name_inside_a_url_not_extracted():
+    assert extract_business_names("the site was https://Golden.Harbor.Trading.Ltd") == []
+
+
+def test_business_name_reaches_the_case_evidence():
+    result = extract('he called it "Golden Harbor Trading LLC" and took my money')
+    assert [e.value for e in result.evidence if e.kind == "business"] == [
+        "Golden Harbor Trading LLC"
+    ]
+
+
+# --- asset-vs-currency qualifiers -----------------------------------------
+
+def test_worth_of_qualifier_labels_the_asset():
+    assert _asset_qualifiers("I sent $12,500 worth of ETH") == {"$12,500": "ETH"}
+
+
+def test_in_qualifier_labels_the_asset():
+    assert _asset_qualifiers("I sent 5000 USD in BTC") == {"5000 USD": "BTC"}
+
+
+def test_unqualified_amount_has_no_asset():
+    assert _asset_qualifiers("I wired $5,000 to his bank") == {}
+
+
+def test_conflicting_qualifiers_for_one_token_are_dropped():
+    text = "I sent $500 worth of ETH, then another $500 worth of BTC"
+    assert _asset_qualifiers(text) == {}
+
+
+def test_qualifier_does_not_alter_the_amount_or_currency():
+    (txn,) = extract("On 2026-02-14 I sent $12,500 worth of ETH.").transactions
+    assert str(txn.amount) == "12500"   # never converted
+    assert txn.currency == "USD"        # the number is still dollars
+    assert txn.asset == "ETH"           # but the leg moved ETH
+    assert txn.method == "Cryptocurrency"
+
+
+def test_asset_ticker_is_verbatim_from_the_story():
+    story = "On 2026-02-14 I sent $12,500 worth of ETH."
+    (txn,) = extract(story).transactions
+    assert txn.asset in story

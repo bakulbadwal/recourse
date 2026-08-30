@@ -62,7 +62,14 @@ python -c "from recourse.agent import main; main()" < my_story.txt
 The agent wraps the same deterministic functions as Strands `@tool`s
 (`build_case_file`, `draft_ic3_complaint`, `draft_freeze_letter`, `draft_action_plan`,
 `list_unverified`) and talks the victim through the results. With no `ANTHROPIC_API_KEY`,
-Strands defaults to Amazon Bedrock (AWS credentials + Bedrock model access for Claude required).
+Strands defaults to Amazon Bedrock (AWS credentials + Bedrock model access for Claude required);
+both provider paths are exercised in `tests/`.
+
+Each tool rebuilds the case file from the story it is handed, so a model that paraphrased or
+truncated the story between calls could hand the victim four drafts that disagree with each
+other. The drafting tools cross-check the `case_id` returned by `build_case_file` and **refuse to
+render** on a mismatch — the divergence surfaces as a tool error the agent must fix, not as a
+quietly inconsistent filing.
 
 ## Architecture: the model is not allowed to know numbers
 
@@ -94,13 +101,13 @@ A filing draft with one wrong hash is worse than no draft at all — this bounda
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                    # 80+ unit tests
+pytest -q                    # 110+ unit tests
 python evals/run_evals.py    # the gate; non-zero exit on any failure
 ```
 
-For seven golden scenarios (multi-chain crypto, romance/pig-butchering scams, a no-crypto wire
-fraud, ambiguous date formats, and a negative-control story full of lookalike strings), the gate
-checks that:
+For eight golden scenarios (multi-chain crypto, romance/pig-butchering scams, a no-crypto wire
+fraud, ambiguous date formats, a negative-control story full of lookalike strings, and the exact
+story used in the demo video), the gate checks that:
 
 - every hash/address/amount/date in every rendered filing exists **verbatim in the source story**
   (or is a declared derivation, like the loss total or the sha256 case id);
@@ -121,6 +128,12 @@ checks that:
 - Ambiguous slash dates (03/04/2026) are read as US month/day/year, flagged for confirmation.
 - Recourse verifies nothing externally — no on-chain lookups, no exchange contact. It structures
   what the victim reports; investigators verify.
+- A leg the victim describes in dollars but paid in crypto ("$12,500 worth of ETH") keeps both
+  labels — `currency: USD`, `asset: ETH` — and says so in `unverified.md`. Recourse never
+  converts, so the dollar figure stays the victim's own stated value.
+- Subject business names are offered as **candidates to confirm**, never asserted: a scam story
+  names the victim's own bank as readily as the scammer's shell company. `LP` and `Co.` are
+  deliberately not recognized as corporate suffixes — they collide with initials and prose.
 - US-centric: the filing map targets IC3/FTC. The freeze letter and case file are
   jurisdiction-neutral.
 - The IC3 step structure and required fields follow the DOJ/OVC walkthrough and IC3's FAQ;

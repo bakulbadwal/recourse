@@ -1,15 +1,44 @@
 {
   "story": "btc_romance_scam.txt",
   "evidence": {
-    "btc_txid": ["c4f8a2d17e3b90065dfa4c28b7e15039d6a2f48c1b7e5d30a9c6f2481e5b7a3d"],
-    "btc_address": ["1Kz3QvPr8fJdWm5xTn7hYb2cRg4sLuE9aB", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"],
-    "amount": ["0.25 BTC", "0.75 BTC"],
-    "date": ["2026-05-14", "2026-06-02"],
-    "exchange": ["kraken"]
+    "btc_txid": [
+      "c4f8a2d17e3b90065dfa4c28b7e15039d6a2f48c1b7e5d30a9c6f2481e5b7a3d"
+    ],
+    "btc_address": [
+      "1Kz3QvPr8fJdWm5xTn7hYb2cRg4sLuE9aB",
+      "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+    ],
+    "amount": [
+      "0.25 BTC",
+      "0.75 BTC"
+    ],
+    "date": [
+      "2026-05-14",
+      "2026-06-02"
+    ],
+    "exchange": [
+      "kraken"
+    ]
   },
   "transactions": [
-    {"amount": "0.75", "currency": "BTC", "date": "2026-05-14", "tx_hash": "c4f8a2d17e3b90065dfa4c28b7e15039d6a2f48c1b7e5d30a9c6f2481e5b7a3d", "destination_address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", "method": "Cryptocurrency"},
-    {"amount": "0.25", "currency": "BTC", "date": "2026-06-02", "tx_hash": null, "destination_address": "1Kz3QvPr8fJdWm5xTn7hYb2cRg4sLuE9aB", "method": "Cryptocurrency"}
+    {
+      "amount": "0.75",
+      "currency": "BTC",
+      "asset": null,
+      "date": "2026-05-14",
+      "tx_hash": "c4f8a2d17e3b90065dfa4c28b7e15039d6a2f48c1b7e5d30a9c6f2481e5b7a3d",
+      "destination_address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+      "method": "Cryptocurrency"
+    },
+    {
+      "amount": "0.25",
+      "currency": "BTC",
+      "asset": null,
+      "date": "2026-06-02",
+      "tx_hash": null,
+      "destination_address": "1Kz3QvPr8fJdWm5xTn7hYb2cRg4sLuE9aB",
+      "method": "Cryptocurrency"
+    }
   ],
   "forbidden": []
 }

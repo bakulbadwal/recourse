@@ -88,3 +88,20 @@ def test_casefile_json_round_trip():
     restored = CaseFile.from_dict(json.loads(blob))
     assert restored.case_id == case.case_id
     assert restored.to_dict() == case.to_dict()
+
+
+def test_business_candidates_collected_on_the_casefile():
+    case = build_casefile('he called it "Golden Harbor Trading LLC" and vanished')
+    assert case.businesses == ["Golden Harbor Trading LLC"]
+
+
+def test_business_candidates_survive_the_json_round_trip():
+    case = build_casefile('he called it "Golden Harbor Trading LLC" and vanished')
+    restored = CaseFile.from_dict(json.loads(json.dumps(case.to_dict())))
+    assert restored.businesses == case.businesses
+
+
+def test_asset_is_part_of_the_case_id():
+    a = build_casefile("On 2026-02-14 I sent $8,000 worth of ETH.")
+    b = build_casefile("On 2026-02-14 I sent $8,000 to him.")
+    assert a.case_id != b.case_id

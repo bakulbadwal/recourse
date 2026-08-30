@@ -1,0 +1,31 @@
+{
+  "story": "demo_romance_investment.txt",
+  "evidence": {
+    "evm_tx_hash": [
+      "0x9a1c22e05f7b8d3640ffab1273c9e845de6017f28b39c4a5061728394a5b6c7d"
+    ],
+    "btc_txid": [
+      "7d3f0e2ab9c14577d06e5b8a91f2c3d4e5f60718293a4b5c6d7e8f9012345678"
+    ],
+    "evm_address": ["0x5aeda56215b167893e80b4fe645ba6d5bab767de"],
+    "btc_address": ["bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"],
+    "amount": ["0.5 BTC", "12500 USD", "5000 USD"],
+    "date": ["2026-02-10", "2026-03-03", "2026-03-28"],
+    "url": ["https://quantum-yield-pro.example.com"],
+    "email": ["david.lin.trader@fastmail.example"],
+    "exchange": ["coinbase"],
+    "business": ["Golden Harbor Trading LLC"]
+  },
+  "transactions": [
+    {"amount": "0.5", "currency": "BTC", "asset": null, "date": "2026-02-10", "tx_hash": "7d3f0e2ab9c14577d06e5b8a91f2c3d4e5f60718293a4b5c6d7e8f9012345678", "destination_address": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4", "method": "Cryptocurrency"},
+    {"amount": "12500", "currency": "USD", "asset": "ETH", "date": "2026-03-03", "tx_hash": "0x9a1c22e05f7b8d3640ffab1273c9e845de6017f28b39c4a5061728394a5b6c7d", "destination_address": "0x5aeda56215b167893e80b4fe645ba6d5bab767de", "method": "Cryptocurrency"},
+    {"amount": "5000", "currency": "USD", "asset": null, "date": "2026-03-28", "tx_hash": null, "destination_address": null, "method": "Wire Transfer"}
+  ],
+  "forbidden": ["David Lin", "20 USD", "0.20 BTC"],
+  "notes_contain": [
+    "the asset sent was ETH",
+    "Golden Harbor Trading LLC",
+    "CANDIDATES only",
+    "Transaction 3: missing transaction hash/ID."
+  ]
+}

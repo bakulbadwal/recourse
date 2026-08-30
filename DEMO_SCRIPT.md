@@ -47,7 +47,7 @@
 ## 3:40–4:30 — The eval gate, live
 
 - Run: `python evals/run_evals.py` — show the scoreboard going green.
-- "Seven golden scenarios. Every hash, amount, and date in every rendered filing must exist
+- "Eight golden scenarios — including this exact story. Every hash, amount, and date in every rendered filing must exist
   verbatim in the source story. Negative controls — truncated hashes, lookalike strings, a
   64-character puzzle code — must NOT be extracted. And the gate self-tests: filings we
   deliberately tamper with an invented hash must be flagged, or the gate itself fails."

@@ -25,6 +25,7 @@ EVIDENCE_KINDS = frozenset(
         "url",
         "email",
         "exchange",
+        "business",
         "phone",
     }
 )
@@ -77,7 +78,11 @@ class Transaction:
 
     amount: Optional[Decimal] = None
     amount_verbatim: Optional[str] = None
-    currency: Optional[str] = None
+    currency: Optional[str] = None  # denomination of ``amount`` as stated
+    # The asset that actually moved, when the story denominates it in something
+    # else ("$12,500 worth of ETH" -> currency USD, asset ETH). Always a
+    # verbatim ticker from the source; no conversion is ever performed.
+    asset: Optional[str] = None
     date: Optional[str] = None  # ISO YYYY-MM-DD
     date_verbatim: Optional[str] = None
     tx_hash: Optional[str] = None  # normalized (lowercased hex)
@@ -99,6 +104,7 @@ class Transaction:
             amount=Decimal(amount) if amount is not None else None,
             amount_verbatim=d.get("amount_verbatim"),
             currency=d.get("currency"),
+            asset=d.get("asset"),
             date=d.get("date"),
             date_verbatim=d.get("date_verbatim"),
             tx_hash=d.get("tx_hash"),
@@ -156,6 +162,9 @@ class CaseFile:
     exchanges: list[str] = field(default_factory=list)
     urls: list[str] = field(default_factory=list)
     emails: list[str] = field(default_factory=list)
+    # Candidate subject business names — never asserted as the subject; filings
+    # render them with a confirm-this instruction (see intake.extract_business_names).
+    businesses: list[str] = field(default_factory=list)
     victim: VictimInfo = field(default_factory=VictimInfo)
     unverified_notes: list[str] = field(default_factory=list)
     created_at: Optional[str] = None  # explicit, optional ISO timestamp
@@ -169,6 +178,7 @@ class CaseFile:
             "exchanges": list(self.exchanges),
             "urls": list(self.urls),
             "emails": list(self.emails),
+            "businesses": list(self.businesses),
             "victim": self.victim.to_dict(),
             "unverified_notes": list(self.unverified_notes),
             "created_at": self.created_at,
@@ -184,6 +194,7 @@ class CaseFile:
             exchanges=list(d.get("exchanges", [])),
             urls=list(d.get("urls", [])),
             emails=list(d.get("emails", [])),
+            businesses=list(d.get("businesses", [])),
             victim=VictimInfo.from_dict(d.get("victim", {})),
             unverified_notes=list(d.get("unverified_notes", [])),
             created_at=d.get("created_at"),

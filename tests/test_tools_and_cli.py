@@ -121,3 +121,57 @@ def test_eval_gate_passes_from_pytest():
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "RESULT: PASS" in proc.stdout
+
+
+# --- case_id cross-check (tool-to-tool divergence) ------------------------
+
+ALTERED_STORY = STORY.replace("$8,000", "$9,000")
+
+
+def test_matching_case_id_renders_the_draft():
+    tools.reset_case_cache()
+    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
+    out = tools.draft_ic3_complaint(STORY, case_id)
+    assert "IC3 Complaint — DRAFT" in out
+
+
+def test_mismatched_case_id_refuses_to_render():
+    tools.reset_case_cache()
+    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
+    out = tools.draft_freeze_letter(ALTERED_STORY, case_id)
+    assert out.startswith("ERROR — story/case mismatch")
+    assert "DRAFT" not in out
+
+
+def test_altered_story_refused_even_without_an_explicit_case_id():
+    tools.reset_case_cache()
+    tools.build_case_file(STORY)
+    out = tools.draft_action_plan(ALTERED_STORY)
+    assert out.startswith("ERROR — this story does not match")
+
+
+def test_standalone_use_without_a_prior_build_is_allowed():
+    tools.reset_case_cache()
+    assert "DRAFT" in tools.list_unverified(STORY)
+
+
+def test_every_drafting_tool_enforces_the_cross_check():
+    tools.reset_case_cache()
+    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
+    for fn in (
+        tools.draft_ic3_complaint,
+        tools.draft_freeze_letter,
+        tools.draft_action_plan,
+        tools.list_unverified,
+    ):
+        assert fn(ALTERED_STORY, case_id).startswith("ERROR")
+        assert "DRAFT" in fn(STORY, case_id)
+
+
+def test_demo_story_and_its_golden_eval_copy_are_identical():
+    """The story in the video is the story the eval gate verifies."""
+    root = Path(__file__).resolve().parents[1]
+    packaged = root / "src" / "recourse" / "data" / "example_story.txt"
+    golden = root / "evals" / "golden" / "demo_romance_investment.txt"
+    example = root / "examples" / "example_story.txt"
+    assert packaged.read_text() == golden.read_text() == example.read_text()

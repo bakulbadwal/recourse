@@ -108,6 +108,10 @@ def verify_casefile_provenance(source: str, case: CaseFile) -> list[str]:
             ("date", t.date_verbatim),
             ("tx_hash", t.tx_hash_verbatim),
             ("destination_address", t.destination_address_verbatim),
+            # The asset ticker is matched case-sensitively from the story, so it
+            # is its own verbatim: a label Recourse inferred rather than read
+            # would fail here.
+            ("asset", t.asset),
         ):
             if verbatim is not None and verbatim not in source:
                 violations.append(

@@ -195,3 +195,67 @@ def test_unverified_report_lists_missing_facts():
 def test_unverified_report_always_disclaims_verification():
     doc = render_unverified_report(_case())
     assert "independently verified" in doc
+
+
+# --- asset vs currency labelling ------------------------------------------
+
+ETH_STORY = (
+    "On 2026-02-14 I sent $8,000 worth of ETH from Coinbase to "
+    "0xcd34cd34cd34cd34cd34cd34cd34cd34cd34cd34."
+)
+BIZ_STORY = (
+    "On 2026-03-28 I wired 5,000 dollars to a company he called "
+    '"Golden Harbor Trading LLC" and never heard back.'
+)
+
+
+def test_freeze_letter_labels_a_dollar_denominated_eth_leg_as_eth():
+    doc = render_freeze_letter(_case(ETH_STORY))
+    assert "Asset: ETH (value stated in USD)" in doc
+    assert "Asset: USD" not in doc  # the bug this replaced
+
+
+def test_ic3_currency_field_names_the_asset_that_moved():
+    doc = render_ic3_draft(_case(ETH_STORY))
+    assert "Currency / Asset: ETH (value stated in USD)" in doc
+
+
+def test_asset_label_falls_back_to_currency_for_plain_fiat():
+    doc = render_freeze_letter(_case("On 2026-05-02 I wired $45,000 to escrow."))
+    assert "Asset: USD" in doc
+
+
+def test_unverified_report_flags_the_unconverted_usd_value():
+    doc = render_unverified_report(_case(ETH_STORY))
+    assert "the asset sent was ETH" in doc
+    assert "never converts" in doc
+
+
+# --- subject business name (IC3 Step 4) -----------------------------------
+
+def test_ic3_business_name_carries_the_candidate_and_a_confirm_instruction():
+    doc = render_ic3_draft(_case(BIZ_STORY))
+    assert "Business Name: Golden Harbor Trading LLC" in doc
+    assert "CANDIDATE(S)" in doc
+
+
+def test_ic3_business_name_is_not_provided_when_none_found():
+    doc = render_ic3_draft(_case(ETH_STORY))
+    assert f"- Business Name: {NOT_PROVIDED}" in doc
+
+
+def test_ic3_json_exposes_business_candidates_as_candidates():
+    data = render_ic3_json(_case(BIZ_STORY))
+    assert data["step4_subjects"]["business_name_candidates"] == [
+        "Golden Harbor Trading LLC"
+    ]
+
+
+def test_freeze_letter_names_the_counterparty_as_unconfirmed():
+    doc = render_freeze_letter(_case(BIZ_STORY))
+    assert "Golden Harbor Trading LLC" in doc
+    assert "not independently confirmed" in doc
+
+
+def test_freeze_letter_omits_counterparty_section_when_none_found():
+    assert "Counterparty name(s)" not in render_freeze_letter(_case(ETH_STORY))

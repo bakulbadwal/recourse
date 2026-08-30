@@ -66,10 +66,26 @@ def _ic3_amount(t: Transaction) -> str:
     return str(t.amount)
 
 
+def _asset_label(t: Transaction) -> str:
+    """What actually moved, and what the figure beside it is denominated in.
+
+    '$12,500 worth of ETH' renders as 'ETH (value stated in USD)' — the leg was
+    crypto, and the dollar figure is the victim's own stated value at the time.
+
+    The word "amount" is deliberately avoided here: ``audit._LABELED_AMOUNT_RE``
+    scans for '...amount...: <number>' anywhere in a rendered document, so an
+    "amount" inside this parenthetical would let the regex run past it to the
+    next label's colon and read that field's number as a fabricated amount.
+    """
+    if t.asset and t.currency and t.asset != t.currency:
+        return f"{t.asset} (value stated in {t.currency})"
+    return _np(t.asset or t.currency)
+
+
 def _txn_lines(t: Transaction, idx: int) -> list[str]:
     lines = [f"#### Transaction {idx}"]
     lines.append(f"- Transaction Amount (no $ or commas): {_ic3_amount(t)}")
-    lines.append(f"- Currency / Asset: {_np(t.currency)}")
+    lines.append(f"- Currency / Asset: {_asset_label(t)}")
     lines.append(f"- Transaction Date: {_np(t.date)}")
     lines.append("- Was the money sent?: " + (NOT_PROVIDED + " (confirm Yes/No)"))
     lines.append(
@@ -164,7 +180,16 @@ def render_ic3_draft(case: CaseFile) -> str:
     subject_emails = case.emails
     subject_urls = case.urls
     lines.append(f"- Name: {NOT_PROVIDED}")
-    lines.append(f"- Business Name: {NOT_PROVIDED}")
+    if case.businesses:
+        lines.append(
+            "- Business Name: "
+            + "; ".join(case.businesses)
+            + "  <- CANDIDATE(S) taken from your story. Confirm each is the "
+            "SUBJECT's business and not your own bank, exchange, or employer "
+            "before filing; delete any that are not."
+        )
+    else:
+        lines.append(f"- Business Name: {NOT_PROVIDED}")
     lines.append(f"- Address: {NOT_PROVIDED}")
     lines.append(f"- Phone (digits only, no dashes): {NOT_PROVIDED}")
     lines.append(
@@ -263,6 +288,8 @@ def render_ic3_json(case: CaseFile) -> dict[str, Any]:
         "step4_subjects": {
             "emails": case.emails,
             "websites": case.urls,
+            # Candidates only — the victim confirms before filing.
+            "business_name_candidates": case.businesses,
         },
         "step5_description": {
             "text": case.narrative.strip(),
@@ -317,7 +344,7 @@ def render_freeze_letter(case: CaseFile) -> str:
         for i, t in enumerate(case.transactions, 1):
             lines.append(f"{i}. Amount: "
                          f"{_np(t.amount_verbatim or (str(t.amount) if t.amount is not None else None))}"
-                         f" | Asset: {_np(t.currency)}"
+                         f" | Asset: {_asset_label(t)}"
                          f" | Date: {_np(t.date)}"
                          f" | Tx hash/ID: {_np(t.tx_hash_verbatim or t.tx_hash)}"
                          f" | Destination: "
@@ -336,6 +363,14 @@ def render_freeze_letter(case: CaseFile) -> str:
     else:
         lines.append(f"- {NOT_PROVIDED}")
     lines.append("")
+    if case.businesses:
+        lines.append("## Counterparty name(s) given to me")
+        lines.append(
+            "Named in my account of events and not independently confirmed: "
+            + "; ".join(case.businesses)
+            + "."
+        )
+        lines.append("")
     lines.append("## Timeline of the fraud")
     dates = sorted({e.value for e in case.evidence if e.kind == "date"})
     if dates:

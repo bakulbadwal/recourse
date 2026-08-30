@@ -1,20 +1,51 @@
 {
   "story": "pig_butchering_platform.txt",
   "evidence": {
-    "evm_tx_hash": ["0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"],
-    "evm_address": ["0xdeadbeef1234567890abcdef1234567890abcdef"],
-    "amount": ["6000 USD", "9900 USDC"],
-    "date": ["2026-06-18", "2026-07-02"],
+    "evm_tx_hash": [
+      "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    ],
+    "evm_address": [
+      "0xdeadbeef1234567890abcdef1234567890abcdef"
+    ],
+    "amount": [
+      "6000 USD",
+      "9900 USDC"
+    ],
+    "date": [
+      "2026-06-18",
+      "2026-07-02"
+    ],
     "url": [
       "https://apex-global-fx.example.org/download",
       "https://apex-global-fx.example.org/support"
     ],
-    "email": ["analyst.desk@apexglobal.example"],
-    "exchange": ["coinbase", "crypto.com"]
+    "email": [
+      "analyst.desk@apexglobal.example"
+    ],
+    "exchange": [
+      "coinbase",
+      "crypto.com"
+    ]
   },
   "transactions": [
-    {"amount": "9900", "currency": "USDC", "date": "2026-06-18", "tx_hash": "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", "destination_address": "0xdeadbeef1234567890abcdef1234567890abcdef", "method": "Cryptocurrency"},
-    {"amount": "6000", "currency": "USD", "date": "2026-07-02", "tx_hash": null, "destination_address": null, "method": null}
+    {
+      "amount": "9900",
+      "currency": "USDC",
+      "asset": null,
+      "date": "2026-06-18",
+      "tx_hash": "0xabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      "destination_address": "0xdeadbeef1234567890abcdef1234567890abcdef",
+      "method": "Cryptocurrency"
+    },
+    {
+      "amount": "6000",
+      "currency": "USD",
+      "asset": null,
+      "date": "2026-07-02",
+      "tx_hash": null,
+      "destination_address": null,
+      "method": null
+    }
   ],
   "forbidden": []
 }
