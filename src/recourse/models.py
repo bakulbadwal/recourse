@@ -165,8 +165,17 @@ class CaseFile:
     # Candidate subject business names — never asserted as the subject; filings
     # render them with a confirm-this instruction (see intake.extract_business_names).
     businesses: list[str] = field(default_factory=list)
+    # A loss figure the victim stated as the total of several transfers. Quoted
+    # on the IC3 total-loss line; never itself a transaction (see intake).
+    stated_total: Optional[str] = None
+    stated_total_verbatim: Optional[str] = None
     victim: VictimInfo = field(default_factory=VictimInfo)
     unverified_notes: list[str] = field(default_factory=list)
+    # The IC3 Step 5 narrative once the agent has composed one AND the audit
+    # has accepted it (recourse.tools.propose_description). It is prose, not a
+    # fact, so it is excluded from the case_id; rendered in place of the raw
+    # story when present.
+    description: Optional[str] = None
     created_at: Optional[str] = None  # explicit, optional ISO timestamp
 
     def to_dict(self) -> dict[str, Any]:
@@ -179,8 +188,11 @@ class CaseFile:
             "urls": list(self.urls),
             "emails": list(self.emails),
             "businesses": list(self.businesses),
+            "stated_total": self.stated_total,
+            "stated_total_verbatim": self.stated_total_verbatim,
             "victim": self.victim.to_dict(),
             "unverified_notes": list(self.unverified_notes),
+            "description": self.description,
             "created_at": self.created_at,
         }
 
@@ -195,8 +207,11 @@ class CaseFile:
             urls=list(d.get("urls", [])),
             emails=list(d.get("emails", [])),
             businesses=list(d.get("businesses", [])),
+            stated_total=d.get("stated_total"),
+            stated_total_verbatim=d.get("stated_total_verbatim"),
             victim=VictimInfo.from_dict(d.get("victim", {})),
             unverified_notes=list(d.get("unverified_notes", [])),
+            description=d.get("description"),
             created_at=d.get("created_at"),
         )
 

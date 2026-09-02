@@ -60,10 +60,13 @@ flowchart LR
 5. **Agent layer (`tools.py`, `agent.py`) — optional.** The same deterministic functions are
    exposed as Strands `@tool`s (imported lazily so the base install has no strands dependency).
    `build_agent()` uses the Anthropic provider when `ANTHROPIC_API_KEY` is set, else Strands'
-   Amazon Bedrock default. Each tool rebuilds the CaseFile from the story it is handed, so a
-   model that paraphrased the story between calls could produce drafts that disagree; the
-   drafting tools therefore cross-check the `case_id` and refuse to render rather than emit a
-   draft built from a different story than the case file the victim was shown. The system prompt forbids the model from stating any
+   Amazon Bedrock default. The drafting tools take a `case_id` and nothing else — there is no story parameter for a
+   model to paraphrase, so two drafts cannot disagree about which story they came from. Facts
+   the agent learns mid-interview enter through `add_detail`, which appends the victim's words
+   to the story and rebuilds, so they carry the same provenance as everything else; identity
+   enters only through `set_complainant`. The one place the model authors filing content — the
+   IC3 Step 5 narrative, via `propose_description` — is gated by the same audit the eval runs:
+   any untraceable hash, address, amount, or date rejects the text with the violations listed. The system prompt forbids the model from stating any
    hash/amount/date not present in tool output and forbids filling in `[NOT PROVIDED]` fields.
    Because the filings are rendered by code, the model could not inject a fact into them even
    if it ignored the prompt — the prompt is a second fence, not the wall.

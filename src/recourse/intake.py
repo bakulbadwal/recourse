@@ -72,6 +72,21 @@ _EXCHANGE_RES = [
     (name, re.compile(r"(?<![\w.])" + re.escape(name) + r"(?![\w])", re.IGNORECASE))
     for name in EXCHANGES
 ]
+# Canonical evidence values stay lowercase (stable keys for the eval gate);
+# letters and plans address the company the way it writes its own name.
+EXCHANGE_DISPLAY = {
+    "coinbase": "Coinbase", "kraken": "Kraken", "binance.us": "Binance.US",
+    "binance": "Binance", "gemini": "Gemini", "crypto.com": "Crypto.com",
+    "bitstamp": "Bitstamp", "bitfinex": "Bitfinex", "kucoin": "KuCoin",
+    "okx": "OKX", "bybit": "Bybit", "robinhood": "Robinhood", "etoro": "eToro",
+    "bitflyer": "bitFlyer", "gate.io": "Gate.io", "htx": "HTX", "mexc": "MEXC",
+    "uphold": "Uphold", "paxos": "Paxos", "cash app": "Cash App",
+    "cashapp": "Cash App",
+}
+
+
+def display_exchange(name: str) -> str:
+    return EXCHANGE_DISPLAY.get(name, name)
 
 CRYPTO_CODES = (
     "BTC",
@@ -90,31 +105,89 @@ CRYPTO_CODES = (
 FIAT_CODES = ("USD", "EUR", "GBP", "CAD", "AUD")
 
 _NUM = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
-# $1,234.56 / €500 / £2000
-SYMBOL_AMOUNT_RE = re.compile(r"(?P<sym>[$€£])\s?(?P<num>" + _NUM + r")\b")
+
+# Spoken multipliers. "$2.5 million" is a $2,500,000 loss; reading it as $2.50
+# is not conservative — it is a six-orders-of-magnitude fabrication in a
+# federal filing. Word forms need a space ("2.5 million"); letter forms must be
+# attached ("$5k", "$1.5M"). A bare "b" is never accepted (too ambiguous).
+# ``_MULT`` captures (one use per regex); ``_MULT_NC`` is the non-capturing
+# twin for patterns that embed the amount shape more than once.
+_MULT_WORDS = r"(?i:thousand|grand|million|mil|billion)"
+_MULT_LETTERS = r"[kK]|[mM]{1,2}|bn|BN"
+_MULT = r"(?:\s+(?P<mult_w>" + _MULT_WORDS + r")|(?P<mult_s>" + _MULT_LETTERS + r"))?"
+_MULT_NC = r"(?:\s+(?:" + _MULT_WORDS + r")|(?:" + _MULT_LETTERS + r"))?"
+_MULTIPLIERS = {
+    "thousand": 1_000, "grand": 1_000, "k": 1_000,
+    "million": 1_000_000, "mil": 1_000_000, "m": 1_000_000, "mm": 1_000_000,
+    "billion": 1_000_000_000, "bn": 1_000_000_000,
+}
+
+# $1,234.56 / €500 / £2000 / $2.5 million / $5k
+SYMBOL_AMOUNT_RE = re.compile(r"(?P<sym>[$€£])\s?(?P<num>" + _NUM + r")" + _MULT + r"\b")
 # 1.5 BTC / 20000 USDT / 500 USD  (code after)
 CODE_AMOUNT_RE = re.compile(
-    r"\b(?P<num>" + _NUM + r")\s?(?P<code>" + "|".join(CRYPTO_CODES + FIAT_CODES) + r")\b"
+    r"\b(?P<num>" + _NUM + r")" + _MULT + r"\s?(?P<code>"
+    + "|".join(CRYPTO_CODES + FIAT_CODES) + r")\b"
 )
 # USD 500 (code before)
 CODE_FIRST_AMOUNT_RE = re.compile(
-    r"\b(?P<code>" + "|".join(FIAT_CODES) + r")\s?(?P<num>" + _NUM + r")\b"
+    r"\b(?P<code>" + "|".join(FIAT_CODES) + r")\s?(?P<num>" + _NUM + r")" + _MULT + r"\b"
 )
-# 5,000 dollars
-WORD_AMOUNT_RE = re.compile(r"\b(?P<num>" + _NUM + r")\s(?:US\s)?dollars?\b", re.IGNORECASE)
+# 5,000 dollars / 5k dollars
+WORD_AMOUNT_RE = re.compile(
+    r"\b(?P<num>" + _NUM + r")" + _MULT + r"\s(?:US\s)?dollars?\b", re.IGNORECASE
+)
+# "5 grand" — US idiom for thousands of dollars; a number immediately before
+# "grand" is the money sense ("grand larceny" has no number in front of it).
+GRAND_AMOUNT_RE = re.compile(r"\b(?P<num>" + _NUM + r")\s+(?P<mult_w>grand)\b", re.IGNORECASE)
+# 0.5 bitcoin / 2 ether — spelled-out asset names, mapped to their tickers.
+CRYPTO_WORDS = {
+    "bitcoin": "BTC", "bitcoins": "BTC",
+    "ether": "ETH", "ethereum": "ETH",
+    "tether": "USDT",
+    "solana": "SOL",
+    "dogecoin": "DOGE",
+    "litecoin": "LTC",
+    "ripple": "XRP",
+}
+WORD_CRYPTO_AMOUNT_RE = re.compile(
+    r"\b(?P<num>" + _NUM + r")\s(?P<word>" + "|".join(CRYPTO_WORDS) + r")\b", re.IGNORECASE
+)
+# Something that looks like money but was not read by any rule above — surfaced
+# as a note so a miss is never silent.
+MONEY_LIKE_RE = re.compile(
+    r"[$€£]\s?\d[\d,.]*\S*|\b\d[\d,.]*\s?(?:" + _MULT_WORDS + r"|[kK])\b"
+)
 
 _SYMBOL_TO_CODE = {"$": "USD", "€": "EUR", "£": "GBP"}
+
+# Every fiat amount shape above, non-capturing, so the asset qualifier's
+# ``amt`` group reproduces the extractor's verbatim token exactly.
+_FIAT_AMOUNT_ALT = (
+    r"[$€£]\s?(?:" + _NUM + r")" + _MULT_NC
+    + r"|\b(?:" + "|".join(FIAT_CODES) + r")\s?(?:" + _NUM + r")" + _MULT_NC
+    + r"|\b(?:" + _NUM + r")" + _MULT_NC + r"\s?(?:" + "|".join(FIAT_CODES) + r")"
+    + r"|\b(?:" + _NUM + r")" + _MULT_NC + r"\s(?i:(?:US\s)?dollars?)"
+)
 
 # "$12,500 worth of ETH" — the NUMBER is denominated in dollars, but the ASSET
 # that actually moved is ETH. Recording only the currency labels a crypto leg
 # "USD", which reads as a bank transfer to an exchange's fraud desk sitting next
 # to an 0x transaction hash. The qualifier is captured as a separate label; it
-# never changes the amount, and no conversion is ever performed.
+# never changes the amount, and no conversion is ever performed. The ticker is
+# matched case-sensitively so the stored label is a verbatim slice of the story.
 ASSET_QUALIFIER_RE = re.compile(
-    r"(?P<amt>[$€£]\s?(?:" + _NUM + r")|\b(?:" + _NUM + r")\s?(?:"
-    + "|".join(FIAT_CODES) + r"))"
+    r"(?P<amt>" + _FIAT_AMOUNT_ALT + r")'?"
     r"\s+(?:worth\s+of|worth\s+in|worth|of|in)\s+"
     r"(?P<code>" + "|".join(CRYPTO_CODES) + r")\b"
+)
+
+# An amount described as a total of several transfers is not itself a
+# transfer. Only consulted when a paragraph states two or more amounts.
+_TOTAL_CONTEXT_RE = re.compile(
+    r"\b(?:total(?:l?ing|led)?|altogether|all\s+together|in\s+all|in\s+total|"
+    r"overall|came\s+to|comes\s+to|adds?\s+up\s+to|added\s+up\s+to|combined|sum)\b",
+    re.IGNORECASE,
 )
 
 # Subject business names for the IC3 form's Step 4 "Business Name" field.
@@ -147,12 +220,27 @@ BUSINESS_NAME_RE = re.compile(
 )
 
 # Date patterns. Deliberately explicit — no fuzzy parsing of arbitrary text.
+_MONTHS = (
+    r"January|February|March|April|May|June|July|August|September|"
+    r"October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec"
+)
 ISO_DATE_RE = re.compile(r"\b(?P<y>\d{4})-(?P<m>\d{2})-(?P<d>\d{2})\b")
+# 2026/03/28 — year first, so unambiguous.
+YEAR_FIRST_SLASH_DATE_RE = re.compile(r"\b(?P<y>\d{4})/(?P<m>\d{1,2})/(?P<d>\d{1,2})\b")
+# 3/28/2026 and 03-28-2026 — both read under the same day/month rules.
 SLASH_DATE_RE = re.compile(r"\b(?P<a>\d{1,2})/(?P<b>\d{1,2})/(?P<y>\d{4})\b")
+DASH_DATE_RE = re.compile(r"\b(?P<a>\d{1,2})-(?P<b>\d{1,2})-(?P<y>\d{4})\b")
+# March 3, 2026 / Mar. 3rd 2026
 MONTH_NAME_DATE_RE = re.compile(
-    r"\b(?P<mon>January|February|March|April|May|June|July|August|September|"
-    r"October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)"
+    r"\b(?P<mon>" + _MONTHS + r")"
     r"\.?\s+(?P<d>\d{1,2})(?:st|nd|rd|th)?,?\s+(?P<y>\d{4})\b",
+    re.IGNORECASE,
+)
+# 3 March 2026 / 3rd of March, 2026 — the day-first form most of the world
+# writes, and what a non-US victim or a bank statement will say.
+DAY_MONTH_NAME_DATE_RE = re.compile(
+    r"\b(?P<d>\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?\s+(?P<mon>" + _MONTHS + r")"
+    r"\.?,?\s+(?P<y>\d{4})\b",
     re.IGNORECASE,
 )
 
@@ -163,6 +251,9 @@ class ExtractionResult:
 
     evidence: list[EvidenceItem] = field(default_factory=list)
     transactions: list[Transaction] = field(default_factory=list)
+    # Amounts the story describes as a total of several transfers. Evidence,
+    # but never transactions (see _build_transactions).
+    stated_totals: list[EvidenceItem] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
     def values_of(self, kind: str) -> list[str]:
@@ -286,13 +377,22 @@ def extract_amounts(text: str, notes: list[str] | None = None) -> list[EvidenceI
     def _overlaps(span: tuple[int, int]) -> bool:
         return any(not (span[1] <= s or span[0] >= e) for s, e in seen_spans)
 
-    def _note(m: re.Match) -> None:
+    handled_spans: list[tuple[int, int]] = []  # extracted OR already noted
+
+    def _handled(span: tuple[int, int]) -> bool:
+        return any(not (span[1] <= s or span[0] >= e) for s, e in handled_spans)
+
+    def _say(msg: str) -> None:
         if notes is not None:
-            notes.append(
-                f"Amount near '{m.group(0)}' looks like a European/comma-decimal "
-                "number; ambiguous, so it was NOT extracted. Victim should "
-                "restate it in plain US format (e.g. 1500.50)."
-            )
+            notes.append(msg)
+
+    def _note(m: re.Match) -> None:
+        handled_spans.append(m.span())
+        _say(
+            f"Amount near '{m.group(0)}' looks like a European/comma-decimal "
+            "number; ambiguous, so it was NOT extracted. Victim should "
+            "restate it in plain US format (e.g. 1500.50)."
+        )
 
     def _add(m: re.Match, num: str, code: str) -> None:
         if _overlaps(m.span()):
@@ -309,7 +409,28 @@ def extract_amounts(text: str, notes: list[str] | None = None) -> list[EvidenceI
         dec = _normalize_amount(num)
         if dec is None:
             return
+        groups = m.groupdict()
+        mult = (groups.get("mult_w") or groups.get("mult_s") or "").lower()
+        if mult:
+            if code in CRYPTO_CODES:
+                # "5k BTC" — a multiplier on a crypto quantity reads as a typo;
+                # the honest move is to ask, not to guess a magnitude.
+                handled_spans.append(m.span())
+                _say(
+                    f"'{m.group(0)}' pairs a multiplier with a crypto quantity; "
+                    "ambiguous, so it was NOT extracted. Victim should restate "
+                    "the exact quantity."
+                )
+                return
+            dec = dec * _MULTIPLIERS[mult]
+            if dec == dec.to_integral_value():
+                dec = Decimal(int(dec))
+            _say(
+                f"'{m.group(0)}' was read as {dec} {code}. Confirm the figure "
+                "before filing."
+            )
         seen_spans.append(m.span())
+        handled_spans.append(m.span())
         items.append(
             EvidenceItem(
                 kind="amount",
@@ -327,6 +448,22 @@ def extract_amounts(text: str, notes: list[str] | None = None) -> list[EvidenceI
         _add(m, m.group("num"), m.group("code").upper())
     for m in WORD_AMOUNT_RE.finditer(text):
         _add(m, m.group("num"), "USD")
+    for m in GRAND_AMOUNT_RE.finditer(text):
+        _add(m, m.group("num"), "USD")
+    for m in WORD_CRYPTO_AMOUNT_RE.finditer(text):
+        _add(m, m.group("num"), CRYPTO_WORDS[m.group("word").lower()])
+
+    # Anything money-shaped that no rule read is reported, never dropped in
+    # silence: a miss the victim can see is recoverable, a silent one is not.
+    for m in MONEY_LIKE_RE.finditer(text):
+        if _handled(m.span()):
+            continue
+        handled_spans.append(m.span())
+        _say(
+            f"'{m.group(0).strip().rstrip('.,;:')}' looks like an amount but "
+            "could not be read, so it was NOT extracted. Victim should restate "
+            "it plainly (e.g. 5000 USD)."
+        )
 
     return items
 
@@ -345,53 +482,11 @@ def extract_dates(text: str) -> list[EvidenceItem]:
     def _overlaps(span: tuple[int, int]) -> bool:
         return any(not (span[1] <= s or span[0] >= e) for s, e in seen_spans)
 
-    for m in ISO_DATE_RE.finditer(text):
+    def _emit(m: re.Match, value: str) -> None:
         try:
-            date_parser.isoparse(m.group(0))
-        except ValueError:
-            continue
-        seen_spans.append(m.span())
-        items.append(
-            EvidenceItem(
-                kind="date",
-                value=m.group(0),
-                verbatim=m.group(0),
-                context=_context(text, *m.span()),
-            )
-        )
-
-    for m in MONTH_NAME_DATE_RE.finditer(text):
-        if _overlaps(m.span()):
-            continue
-        try:
-            dt = date_parser.parse(f"{m.group('mon')} {m.group('d')} {m.group('y')}")
-        except (ValueError, OverflowError):
-            continue
-        seen_spans.append(m.span())
-        items.append(
-            EvidenceItem(
-                kind="date",
-                value=dt.date().isoformat(),
-                verbatim=m.group(0),
-                context=_context(text, *m.span()),
-            )
-        )
-
-    for m in SLASH_DATE_RE.finditer(text):
-        if _overlaps(m.span()):
-            continue
-        a, b, y = int(m.group("a")), int(m.group("b")), int(m.group("y"))
-        if 1 <= a <= 12 and 1 <= b <= 31:
-            month, day = a, b  # US month-first reading
-        elif a > 12 and 1 <= b <= 12 and 1 <= a <= 31:
-            month, day = b, a  # unambiguous day-first
-        else:
-            continue
-        try:
-            value = f"{y:04d}-{month:02d}-{day:02d}"
             date_parser.isoparse(value)
         except (ValueError, OverflowError):
-            continue
+            return
         seen_spans.append(m.span())
         items.append(
             EvidenceItem(
@@ -401,6 +496,44 @@ def extract_dates(text: str) -> list[EvidenceItem]:
                 context=_context(text, *m.span()),
             )
         )
+
+    def _month_name(m: re.Match) -> None:
+        if _overlaps(m.span()):
+            return
+        try:
+            dt = date_parser.parse(f"{m.group('mon')} {m.group('d')} {m.group('y')}")
+        except (ValueError, OverflowError):
+            return
+        _emit(m, dt.date().isoformat())
+
+    def _numeric_ambiguous(m: re.Match) -> None:
+        """3/28/2026 and 03-28-2026: US month-first unless that is impossible."""
+        if _overlaps(m.span()):
+            return
+        a, b, y = int(m.group("a")), int(m.group("b")), int(m.group("y"))
+        if 1 <= a <= 12 and 1 <= b <= 31:
+            month, day = a, b  # US month-first reading
+        elif a > 12 and 1 <= b <= 12 and 1 <= a <= 31:
+            month, day = b, a  # unambiguous day-first
+        else:
+            return
+        _emit(m, f"{y:04d}-{month:02d}-{day:02d}")
+
+    # Unambiguous forms first so they claim their spans before the ambiguous
+    # numeric readers run.
+    for m in ISO_DATE_RE.finditer(text):
+        _emit(m, m.group(0))
+    for m in YEAR_FIRST_SLASH_DATE_RE.finditer(text):
+        if not _overlaps(m.span()):
+            _emit(m, f"{int(m.group('y')):04d}-{int(m.group('m')):02d}-{int(m.group('d')):02d}")
+    for m in MONTH_NAME_DATE_RE.finditer(text):
+        _month_name(m)
+    for m in DAY_MONTH_NAME_DATE_RE.finditer(text):
+        _month_name(m)
+    for m in SLASH_DATE_RE.finditer(text):
+        _numeric_ambiguous(m)
+    for m in DASH_DATE_RE.finditer(text):
+        _numeric_ambiguous(m)
 
     return items
 
@@ -501,17 +634,102 @@ def _segments(text: str) -> list[str]:
     return [s for s in _SEGMENT_SPLIT_RE.split(text) if s and s.strip()]
 
 
-def _build_transactions(text: str) -> list[Transaction]:
+# "$10,000 total" / "$10,000 in total" / "$10,000 altogether": a total-word
+# immediately AFTER an amount binds to that amount.
+_TOTAL_AFTER_RE = re.compile(
+    r"^\s*(?:in\s+)?(?:total|altogether|all\s+together|combined|overall)\b",
+    re.IGNORECASE,
+)
+
+
+def _amount_spans(seg: str, amounts: list[EvidenceItem]) -> list[tuple[int, int, EvidenceItem]]:
+    """Locate each amount in its paragraph, in text order.
+
+    Duplicate tokens ("$500 ... $500") map to successive occurrences.
+    """
+    cursors: dict[str, int] = {}
+    spans: list[tuple[int, int, EvidenceItem]] = []
+    for a in amounts:
+        start = seg.find(a.verbatim, cursors.get(a.verbatim, 0))
+        if start == -1:
+            start = seg.find(a.verbatim)
+        end = start + len(a.verbatim)
+        cursors[a.verbatim] = end
+        spans.append((start, end, a))
+    spans.sort(key=lambda s: s[0])
+    return spans
+
+
+def _stated_totals_in(seg: str, amounts: list[EvidenceItem]) -> list[EvidenceItem]:
+    """Amounts this paragraph describes as the sum of its other amounts.
+
+    A total-word binds to the amount it sits right after ("$10,000 total: …")
+    or, failing that, to the amount it precedes within a short window ("the
+    total came to $10,000"). Windows never cross a neighboring amount, and a
+    stretch of text claimed by one amount's after-window is not re-read as the
+    next amount's before-window — otherwise "$10,000 total: $4,000" would flag
+    both.
+    """
+    spans = _amount_spans(seg, amounts)
+    flagged: list[EvidenceItem] = []
+    claimed_until = 0
+    for i, (start, end, item) in enumerate(spans):
+        prev_end = spans[i - 1][1] if i > 0 else 0
+        next_start = spans[i + 1][0] if i + 1 < len(spans) else len(seg)
+        after = seg[end:min(next_start, end + 24)]
+        before = seg[max(prev_end, claimed_until, start - 48):start]
+        m_after = _TOTAL_AFTER_RE.match(after)
+        if m_after:
+            flagged.append(item)
+            claimed_until = end + m_after.end()
+        elif _TOTAL_CONTEXT_RE.search(before):
+            flagged.append(item)
+    return flagged
+
+
+def _build_transactions(
+    text: str, notes: list[str] | None = None
+) -> tuple[list[Transaction], list[EvidenceItem]]:
     """Group co-occurring facts into transactions, one paragraph at a time.
 
     A paragraph that contains an amount OR a tx hash becomes a transaction;
     dates/hashes/addresses in the same paragraph are attached to it in order.
     Facts that co-occur with nothing stay as loose evidence — never invented
     into a transaction.
+
+    Returns ``(transactions, stated_totals)``. An amount a paragraph describes
+    as the total of several transfers ("altogether $10,000 — four transfers of
+    $2,500") is a stated total, not a transfer. It stays evidence and is
+    returned separately so the IC3 total-loss line can quote it, but it never
+    becomes a transaction: that would add the total to its own parts.
     """
     txns: list[Transaction] = []
+    stated_totals: list[EvidenceItem] = []
     for seg in _segments(text):
         amounts = extract_amounts(seg)
+        if len(amounts) >= 2:
+            totals = _stated_totals_in(seg, amounts)
+            if len(totals) == 1:
+                # Exactly one total among several amounts: quote it, don't
+                # count it. Two flagged totals is ambiguous — leave every
+                # amount as a transfer and say so.
+                (total,) = totals
+                stated_totals.append(total)
+                amounts = [a for a in amounts if a is not total]
+                if notes is not None:
+                    notes.append(
+                        f"'{total.verbatim}' reads as a stated TOTAL, not a "
+                        "separate transfer, so it was not added to the itemized "
+                        "loss. Confirm it equals the sum of the transfers you "
+                        "listed."
+                    )
+            elif len(totals) > 1 and notes is not None:
+                notes.append(
+                    "More than one amount in one paragraph reads as a total ("
+                    + "; ".join(t.verbatim for t in totals)
+                    + "); all were kept as transfers. Check the itemized list "
+                    "for double counting."
+                )
         qualifiers = _asset_qualifiers(seg)
         dates = extract_dates(seg)
         hash_items = [
@@ -568,7 +786,7 @@ def _build_transactions(text: str) -> list[Transaction]:
                     context=seg.strip(),
                 )
             )
-    return txns
+    return txns, stated_totals
 
 
 def extract(text: str) -> ExtractionResult:
@@ -580,13 +798,16 @@ def extract(text: str) -> ExtractionResult:
     result.evidence.extend(extract_urls_and_emails(text))
     result.evidence.extend(extract_exchanges(text))
     result.evidence.extend(extract_business_names(text))
-    result.transactions = _build_transactions(text)
+    result.transactions, result.stated_totals = _build_transactions(
+        text, notes=result.notes
+    )
 
-    for m in SLASH_DATE_RE.finditer(text):
-        a, b = int(m.group("a")), int(m.group("b"))
-        if 1 <= a <= 12 and 1 <= b <= 12 and a != b:
-            result.notes.append(
-                f"Date '{m.group(0)}' is ambiguous (day/month order); "
-                f"read as US month/day/year. Victim should confirm."
-            )
+    for rx in (SLASH_DATE_RE, DASH_DATE_RE):
+        for m in rx.finditer(text):
+            a, b = int(m.group("a")), int(m.group("b"))
+            if 1 <= a <= 12 and 1 <= b <= 12 and a != b:
+                result.notes.append(
+                    f"Date '{m.group(0)}' is ambiguous (day/month order); "
+                    f"read as US month/day/year. Victim should confirm."
+                )
     return result

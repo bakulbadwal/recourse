@@ -180,7 +180,8 @@ def test_action_plan_warns_about_recovery_scams():
 
 
 def test_action_plan_names_detected_exchanges():
-    assert "coinbase" in render_action_plan(_case())
+    # Rendered with the company's own capitalization, not the lowercase key.
+    assert "Coinbase" in render_action_plan(_case())
 
 
 # --- unverified report ----------------------------------------------------
@@ -259,3 +260,39 @@ def test_freeze_letter_names_the_counterparty_as_unconfirmed():
 
 def test_freeze_letter_omits_counterparty_section_when_none_found():
     assert "Counterparty name(s)" not in render_freeze_letter(_case(ETH_STORY))
+
+
+# --- stated totals on the IC3 form ----------------------------------------
+
+def test_stated_total_is_quoted_and_reconciled_when_it_matches():
+    doc = render_ic3_draft(_case(
+        "I lost $10,000 total: $4,000 on 2026-04-01 and $6,000 on 2026-04-02."))
+    assert "Total loss amount (no $ or commas): 10000 (the total as you stated it: '$10,000')" in doc
+    assert "matches the sum of the itemized USD transfers" in doc
+
+
+def test_stated_total_that_disagrees_with_itemized_sum_is_flagged():
+    doc = render_ic3_draft(_case(
+        "The total came to $10,000 across four transfers of $2,500 each."))
+    assert "Total loss amount (no $ or commas): 10000" in doc
+    assert "add up to 2500, not the total you stated" in doc
+
+
+# --- exchange display names and the reframed freeze letter ------------------
+
+def test_freeze_letter_addresses_the_exchange_by_its_own_name():
+    doc = render_freeze_letter(_case())
+    assert "To: Fraud/Security team, Coinbase" in doc
+    assert "coinbase" not in doc.split("Case file")[1].split("## Fraudulent")[0]
+
+
+def test_freeze_letter_asks_for_preservation_and_flagging_not_just_a_freeze():
+    doc = render_freeze_letter(_case())
+    assert "Records Preservation" in doc
+    assert "preserve all records" in doc
+    assert "flag the destination addresses" in doc
+    assert "no specific outcome is guaranteed" in doc
+
+
+def test_ic3_step_6_uses_display_names():
+    assert "Exchanges/platforms involved: Coinbase" in render_ic3_draft(_case())

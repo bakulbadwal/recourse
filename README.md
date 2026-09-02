@@ -54,22 +54,35 @@ same story in, same case id and same drafts out, on any machine, any day.
 ```bash
 pip install -e ".[agent]"        # pulls in strands-agents[anthropic]
 
-# Anthropic API:
-export ANTHROPIC_API_KEY=sk-ant-...   # or use AWS credentials for Bedrock (the Strands default)
-python -c "from recourse.agent import main; main()" < my_story.txt
+# Anthropic API — or set nothing and use AWS credentials for Amazon Bedrock (the Strands default):
+export ANTHROPIC_API_KEY=sk-ant-...
+python -m recourse chat                                              # interactive interview
+python -c "from recourse.agent import main; main()" < my_story.txt   # one-shot
 ```
 
-The agent wraps the same deterministic functions as Strands `@tool`s
-(`build_case_file`, `draft_ic3_complaint`, `draft_freeze_letter`, `draft_action_plan`,
-`list_unverified`) and talks the victim through the results. With no `ANTHROPIC_API_KEY`,
-Strands defaults to Amazon Bedrock (AWS credentials + Bedrock model access for Claude required);
-both provider paths are exercised in `tests/`.
+The agent runs an **interview**, not a one-shot conversion — a victim in the first hours has
+fragments and shame, not a clean story. Nine Strands `@tool`s, each guarding one boundary:
 
-Each tool rebuilds the case file from the story it is handed, so a model that paraphrased or
-truncated the story between calls could hand the victim four drafts that disagree with each
-other. The drafting tools cross-check the `case_id` returned by `build_case_file` and **refuse to
-render** on a mismatch — the divergence surfaces as a tool error the agent must fix, not as a
-quietly inconsistent filing.
+| Tool | What it does | Boundary it enforces |
+|---|---|---|
+| `build_case_file` | Extracts the evidence record from the story, verbatim | Every fact is a literal substring of the story |
+| `add_detail` | Appends what the victim says later and rebuilds the case | Later facts enter the same way, with the same provenance |
+| `set_complainant` | Records the victim's own identity for IC3 Step 2 | The only door for identity — never inferred from the story |
+| `propose_description` | Accepts a model-written IC3 Step 5 narrative **only if the audit passes** | The one place the model authors filing content, gated by `audit.py` |
+| `draft_ic3_complaint`, `draft_freeze_letter`, `draft_action_plan`, `list_unverified` | Render the drafts | Take a `case_id` only — there is no story parameter to paraphrase |
+| `screen_recovery_offer` | Rule-based screen of "we can get your money back" pitches | Every warning sign is quoted verbatim from the message |
+
+The system prompt makes the model ask for **one missing item at a time, most recoverable first**
+— a bank wire with no reference number before anything else, because it is the only leg a bank
+can still try to recall — and forbids stating any figure not present in tool output. With no
+`ANTHROPIC_API_KEY`, Strands defaults to Amazon Bedrock (AWS credentials + Bedrock model access
+for Claude required); both provider paths are exercised in `tests/`.
+
+**The audit is a runtime guardrail, not only a CI check.** `propose_description` runs the same
+anti-invention audit over the model's own text before accepting it: a hash, address, amount, or
+date that does not trace to the victim's words is rejected with the exact violations listed, and
+the model has to fix them. Until a description is accepted, the IC3 draft carries the victim's raw
+story instead.
 
 ## Architecture: the model is not allowed to know numbers
 
@@ -101,7 +114,7 @@ A filing draft with one wrong hash is worse than no draft at all — this bounda
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                    # 110+ unit tests
+pytest -q                    # 140+ unit tests
 python evals/run_evals.py    # the gate; non-zero exit on any failure
 ```
 
@@ -134,6 +147,16 @@ story used in the demo video), the gate checks that:
 - Subject business names are offered as **candidates to confirm**, never asserted: a scam story
   names the victim's own bank as readily as the scammer's shell company. `LP` and `Co.` are
   deliberately not recognized as corporate suffixes — they collide with initials and prose.
+- Spoken multipliers are normalized, never truncated: "$2.5 million" becomes `2500000` with a
+  confirm-this note (reading it as $2.50 would be a six-orders-of-magnitude fabrication). A
+  multiplier on a crypto quantity ("5k BTC") is dropped with a note instead.
+- An amount a paragraph describes as the *total* of its other amounts is quoted on the IC3
+  total-loss line and reconciled against the itemized sum — never counted as a transfer. Two
+  competing totals in one paragraph are left alone and flagged. Anything money-shaped that no rule
+  could read is listed in `unverified.md`: a miss is never silent.
+- The audit over a model-written description checks digits, hashes, addresses, and dates. It
+  cannot catch a number written out in words ("twelve thousand dollars") or two real figures
+  swapped between transactions; the victim's review is still the last line.
 - US-centric: the filing map targets IC3/FTC. The freeze letter and case file are
   jurisdiction-neutral.
 - The IC3 step structure and required fields follow the DOJ/OVC walkthrough and IC3's FAQ;

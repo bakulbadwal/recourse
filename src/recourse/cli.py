@@ -89,8 +89,25 @@ def main(argv: list[str] | None = None) -> int:
     p_demo.add_argument("--out", default=None, help="Output directory")
     p_demo.set_defaults(func=_cmd_demo)
 
+    p_chat = sub.add_parser(
+        "chat",
+        help="Interactive interview with the Strands agent (needs the [agent] extra "
+        "and ANTHROPIC_API_KEY or AWS/Bedrock credentials)",
+    )
+    p_chat.set_defaults(func=_cmd_chat)
+
     args = parser.parse_args(argv)
     return args.func(args)
+
+
+def _cmd_chat(args: argparse.Namespace) -> int:  # pragma: no cover - interactive
+    try:
+        from .agent import chat
+    except ImportError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    chat()
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

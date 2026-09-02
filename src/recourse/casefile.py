@@ -147,6 +147,15 @@ def _unverified_notes(
                 "wallet or exchange history before filing."
             )
 
+    distinct_totals = sorted({t.verbatim for t in extraction.stated_totals if t.value.endswith(" USD")})
+    if len({t.value for t in extraction.stated_totals if t.value.endswith(" USD")}) > 1:
+        notes.append(
+            "Your story states more than one different total ("
+            + "; ".join(distinct_totals)
+            + "). Recourse did not choose between them — state the single "
+            "total yourself on the IC3 form."
+        )
+
     business_names = [e.value for e in evidence if e.kind == "business"]
     if business_names:
         notes.append(
@@ -188,6 +197,17 @@ def build_casefile(
     evidence = _sort_evidence(_dedupe_evidence(extraction.evidence))
     transactions = _timeline_sort(_dedupe_transactions(extraction.transactions))
 
+    # A single distinct USD figure the victim stated as their total. Two
+    # different stated totals are a contradiction to surface, not to pick from.
+    usd_totals = {
+        t.value: t for t in extraction.stated_totals if t.value.endswith(" USD")
+    }
+    stated_total = stated_total_verbatim = None
+    if len(usd_totals) == 1:
+        (total,) = usd_totals.values()
+        stated_total = total.value.partition(" ")[0]
+        stated_total_verbatim = total.verbatim
+
     case_id = compute_case_id(story, evidence, transactions, victim)
 
     return CaseFile(
@@ -199,6 +219,8 @@ def build_casefile(
         urls=sorted({e.value for e in evidence if e.kind == "url"}),
         emails=sorted({e.value for e in evidence if e.kind == "email"}),
         businesses=sorted({e.value for e in evidence if e.kind == "business"}),
+        stated_total=stated_total,
+        stated_total_verbatim=stated_total_verbatim,
         victim=victim,
         unverified_notes=_unverified_notes(extraction, evidence, transactions, victim),
         created_at=created_at,

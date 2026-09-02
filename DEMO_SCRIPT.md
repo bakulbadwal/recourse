@@ -41,13 +41,22 @@
   agent on top wraps those functions as tools: it narrates, asks the victim for missing fields,
   and walks them through the plan. Its prompt forbids stating any number not in tool output —
   but even if it tried, the filings are rendered by code the model never touches."
-- Short clip of the agent conversation (agent mode), showing it calling `build_case_file` and
-  `draft_ic3_complaint` as tools.
+- Live agent clip (agent mode), three beats, ~40 seconds:
+  1. **The interview.** After `build_case_file`, the agent asks for ONE thing — the wire
+     confirmation number — and says why ("the only transfer a bank can still try to recall").
+     The answer goes in through `add_detail`; the `[NOT PROVIDED]` field flips.
+  2. **The audit as a guardrail.** The agent writes the IC3 Step 5 description and submits it via
+     `propose_description`. Show a REJECTED response — the audit names the figure that didn't
+     trace — then the corrected ACCEPTED one. "The model is allowed to write prose. It is not
+     allowed to write a number we can't find in your own words."
+  3. **The second scam.** Paste a "we can recover your funds for a small activation fee" DM into
+     `screen_recovery_offer`: LIKELY RECOVERY SCAM, every warning sign quoted from the message.
+     "Victims get hit again within days. This is the part I wish someone had built for me." 
 
 ## 3:40–4:30 — The eval gate, live
 
 - Run: `python evals/run_evals.py` — show the scoreboard going green.
-- "Eight golden scenarios — including this exact story. Every hash, amount, and date in every rendered filing must exist
+- "Eight golden scenarios — including this exact story — and 140-plus unit tests. Every hash, amount, and date in every rendered filing must exist
   verbatim in the source story. Negative controls — truncated hashes, lookalike strings, a
   64-character puzzle code — must NOT be extracted. And the gate self-tests: filings we
   deliberately tamper with an invented hash must be flagged, or the gate itself fails."

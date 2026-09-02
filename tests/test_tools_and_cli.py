@@ -34,13 +34,15 @@ def test_build_case_file_returns_json():
 
 
 def test_draft_tools_return_drafts():
+    tools.reset_case_cache()
+    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
     for fn in (
         tools.draft_ic3_complaint,
         tools.draft_freeze_letter,
         tools.draft_action_plan,
         tools.list_unverified,
     ):
-        out = fn(STORY)
+        out = fn(case_id)
         assert "DRAFT" in out
 
 
@@ -123,49 +125,144 @@ def test_eval_gate_passes_from_pytest():
     assert "RESULT: PASS" in proc.stdout
 
 
-# --- case_id cross-check (tool-to-tool divergence) ------------------------
+# --- drafting tools accept only a case_id ---------------------------------
 
-ALTERED_STORY = STORY.replace("$8,000", "$9,000")
+DRAFTERS = (
+    tools.draft_ic3_complaint,
+    tools.draft_freeze_letter,
+    tools.draft_action_plan,
+    tools.list_unverified,
+)
 
 
-def test_matching_case_id_renders_the_draft():
+def _build():
     tools.reset_case_cache()
-    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
-    out = tools.draft_ic3_complaint(STORY, case_id)
-    assert "IC3 Complaint — DRAFT" in out
+    return json.loads(tools.build_case_file(STORY))
 
 
-def test_mismatched_case_id_refuses_to_render():
+def test_build_returns_a_compact_summary_not_the_story():
+    data = _build()
+    assert len(data["case_id"]) == 64
+    assert "narrative" not in data
+    assert data["transactions"][0]["amount"] == "8000"
+    assert data["transactions"][0]["asset"] == "ETH"
+    assert "name" in data["complainant_missing_fields"]
+
+
+def test_known_case_id_renders_every_draft():
+    case_id = _build()["case_id"]
+    for fn in DRAFTERS:
+        assert "DRAFT" in fn(case_id)
+
+
+def test_unknown_case_id_is_refused_by_every_drafter():
     tools.reset_case_cache()
-    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
-    out = tools.draft_freeze_letter(ALTERED_STORY, case_id)
-    assert out.startswith("ERROR — story/case mismatch")
-    assert "DRAFT" not in out
+    for fn in DRAFTERS:
+        out = fn("f" * 64)
+        assert out.startswith("ERROR — unknown case_id")
+        assert "DRAFT" not in out
 
 
-def test_altered_story_refused_even_without_an_explicit_case_id():
-    tools.reset_case_cache()
-    tools.build_case_file(STORY)
-    out = tools.draft_action_plan(ALTERED_STORY)
-    assert out.startswith("ERROR — this story does not match")
+# --- add_detail: later facts enter through the story ----------------------
+
+def test_add_detail_appends_verbatim_and_rebuilds():
+    case_id = _build()["case_id"]
+    out = json.loads(tools.add_detail(case_id, "The wire reference was 20260328MMQFMPUS33 on 2026-03-28."))
+    assert out["previous_case_id"] == case_id
+    assert out["case_id"] != case_id
+    assert {"kind": "date", "value": "2026-03-28"} in out["new_evidence"]
+    # The detail is now literally part of the story the drafts are built from.
+    assert "20260328MMQFMPUS33" in tools.draft_ic3_complaint(out["case_id"])
 
 
-def test_standalone_use_without_a_prior_build_is_allowed():
-    tools.reset_case_cache()
-    assert "DRAFT" in tools.list_unverified(STORY)
+def test_add_detail_rejects_unknown_case_and_empty_detail():
+    case_id = _build()["case_id"]
+    assert tools.add_detail("0" * 64, "x").startswith("ERROR — unknown case_id")
+    assert tools.add_detail(case_id, "   ").startswith("ERROR — detail is empty")
 
 
-def test_every_drafting_tool_enforces_the_cross_check():
-    tools.reset_case_cache()
-    case_id = json.loads(tools.build_case_file(STORY))["case_id"]
-    for fn in (
-        tools.draft_ic3_complaint,
-        tools.draft_freeze_letter,
-        tools.draft_action_plan,
-        tools.list_unverified,
-    ):
-        assert fn(ALTERED_STORY, case_id).startswith("ERROR")
-        assert "DRAFT" in fn(STORY, case_id)
+# --- set_complainant: the only door for identity ---------------------------
+
+def test_set_complainant_fills_ic3_step_2_and_changes_case_id():
+    case_id = _build()["case_id"]
+    out = json.loads(tools.set_complainant(case_id, name="Dana Whitfield", email="dana@mailbox.example"))
+    assert out["case_id"] != case_id
+    assert out["complainant_recorded"] == ["email", "name"]
+    assert "name" not in out["complainant_missing_fields"]
+    doc = tools.draft_ic3_complaint(out["case_id"])
+    assert "- Name: Dana Whitfield" in doc
+    assert "- Email: dana@mailbox.example" in doc
+
+
+def test_set_complainant_with_nothing_supplied_is_an_error():
+    case_id = _build()["case_id"]
+    assert tools.set_complainant(case_id).startswith("ERROR — no complainant fields")
+
+
+# --- propose_description: model-authored, audit-gated ---------------------
+
+def test_clean_description_is_accepted_and_rendered_into_step_5():
+    case_id = _build()["case_id"]
+    text = ("On 2026-02-14 I sent $8,000 worth of ETH from Coinbase to "
+            "0xcd34cd34cd34cd34cd34cd34cd34cd34cd34cd34.")
+    out = tools.propose_description(case_id, text)
+    assert out.startswith("ACCEPTED")
+    doc = tools.draft_ic3_complaint(case_id)
+    assert "composed by the assistant" in doc
+    assert text in doc
+
+
+def test_description_with_an_invented_amount_is_rejected():
+    case_id = _build()["case_id"]
+    out = tools.propose_description(case_id, "On 2026-02-14 I sent $9,000 worth of ETH.")
+    assert out.startswith("REJECTED")
+    assert "9,000" in out or "9000" in out
+    assert "composed by the assistant" not in tools.draft_ic3_complaint(case_id)
+
+
+def test_description_with_an_invented_hash_or_date_is_rejected():
+    case_id = _build()["case_id"]
+    assert tools.propose_description(case_id, "The hash was 0x" + "f" * 64 + ".").startswith("REJECTED")
+    assert tools.propose_description(case_id, "It happened on 1999-01-31.").startswith("REJECTED")
+
+
+def test_description_over_the_ic3_limit_is_rejected():
+    case_id = _build()["case_id"]
+    assert tools.propose_description(case_id, "x" * 3501).startswith("REJECTED — 3501 characters")
+
+
+def test_add_detail_clears_an_accepted_description():
+    case_id = _build()["case_id"]
+    tools.propose_description(case_id, "On 2026-02-14 I sent $8,000 worth of ETH.")
+    out = json.loads(tools.add_detail(case_id, "I also wired $500 on 2026-02-20."))
+    assert out["description_status"].startswith("cleared")
+    assert "composed by the assistant" not in tools.draft_ic3_complaint(out["case_id"])
+
+
+# --- recovery-scam screener -------------------------------------------------
+
+def test_recovery_scam_pitch_is_flagged_with_verbatim_evidence():
+    msg = ("Hi, I saw your post about the Coinbase loss. Our blockchain experts can "
+           "guarantee recovery of your funds. There is a small activation fee of "
+           "$500 payable in USDT before we start. Message me on Telegram, act now.")
+    out = json.loads(tools.screen_recovery_offer(msg))
+    assert out["verdict"] == "LIKELY RECOVERY SCAM"
+    ids = {s["signal"] for s in out["signals"]}
+    assert {"upfront_fee", "guarantee", "recovery_expert", "messaging_app", "urgency"} <= ids
+    for s in out["signals"]:
+        assert s["matched"] in msg  # every hit is quoted from the message
+    assert "cryptorecoveryfraudvictims" in " ".join(out["what_to_do"])
+
+
+def test_benign_message_has_no_markers():
+    out = json.loads(tools.screen_recovery_offer("Your IC3 complaint was received. Thank you."))
+    assert out["verdict"] == "NO KNOWN MARKERS FOUND"
+    assert out["signals"] == []
+
+
+def test_single_soft_signal_is_caution_not_scam():
+    out = json.loads(tools.screen_recovery_offer("Please reply within 48 hours."))
+    assert out["verdict"] == "CAUTION"
 
 
 def test_demo_story_and_its_golden_eval_copy_are_identical():

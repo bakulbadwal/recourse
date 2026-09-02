@@ -274,3 +274,119 @@ def test_asset_ticker_is_verbatim_from_the_story():
     story = "On 2026-02-14 I sent $12,500 worth of ETH."
     (txn,) = extract(story).transactions
     assert txn.asset in story
+
+
+# --- multipliers: "$2.5 million" must never become $2.50 -------------------
+
+def test_million_multiplier_is_normalized_not_truncated():
+    (item,) = extract_amounts("I wired $2.5 million to escrow.")
+    assert item.value == "2500000 USD"
+    assert item.verbatim == "$2.5 million"
+
+
+def test_letter_multipliers():
+    assert extract_amounts("I lost $5k.")[0].value == "5000 USD"
+    assert extract_amounts("about $1.5M gone")[0].value == "1500000 USD"
+    assert extract_amounts("5k dollars")[0].value == "5000 USD"
+
+
+def test_grand_is_thousands_of_dollars():
+    assert extract_amounts("he took 5 grand")[0].value == "5000 USD"
+
+
+def test_multiplier_read_is_noted_for_confirmation():
+    notes: list[str] = []
+    extract_amounts("I wired $2.5 million.", notes=notes)
+    assert any("read as 2500000 USD" in n for n in notes)
+
+
+def test_multiplier_on_a_crypto_quantity_is_dropped_with_a_note():
+    notes: list[str] = []
+    assert extract_amounts("I sent 5k BTC", notes=notes) == []
+    assert any("multiplier with a crypto quantity" in n for n in notes)
+
+
+def test_money_like_text_that_could_not_be_read_is_noted_never_silent():
+    notes: list[str] = []
+    items = extract_amounts("I lost roughly 1.5 million and 5k followers.", notes=notes)
+    assert items == []
+    assert sum("looks like an amount but could not be read" in n for n in notes) == 2
+
+
+def test_dollars_per_month_is_not_a_multiplier():
+    (item,) = extract_amounts("It cost $5 a month.")
+    assert item.value == "5 USD"
+
+
+# --- spelled-out crypto ----------------------------------------------------
+
+def test_spelled_out_bitcoin_maps_to_btc():
+    (item,) = extract_amounts("I sent 0.5 bitcoin to him")
+    assert item.value == "0.5 BTC"
+    assert item.verbatim == "0.5 bitcoin"
+
+
+def test_word_amount_asset_qualifier():
+    (txn,) = extract("On 2026-02-01 I wired 12,500 dollars' worth of ETH.").transactions
+    assert txn.currency == "USD" and txn.asset == "ETH"
+
+
+# --- more date formats -----------------------------------------------------
+
+def test_day_first_month_name_date():
+    (item,) = extract_dates("paid on 3 March 2026 by wire")
+    assert item.value == "2026-03-03"
+    (item,) = extract_dates("the 3rd of March, 2026")
+    assert item.value == "2026-03-03"
+
+
+def test_year_first_slash_date():
+    (item,) = extract_dates("statement line 2026/03/28")
+    assert item.value == "2026-03-28"
+
+
+def test_dash_date_uses_the_slash_rules():
+    (item,) = extract_dates("wired on 03-28-2026")
+    assert item.value == "2026-03-28"
+    (item,) = extract_dates("wired on 28-03-2026")  # unambiguous day-first
+    assert item.value == "2026-03-28"
+
+
+def test_ambiguous_dash_date_gets_a_note():
+    assert any("ambiguous" in n for n in extract("paid on 03-04-2026").notes)
+
+
+def test_iso_date_is_not_double_read_as_a_dash_date():
+    items = extract_dates("on 2026-03-28 I paid")
+    assert [i.value for i in items] == ["2026-03-28"]
+
+
+# --- stated totals are quoted, never counted -------------------------------
+
+def test_total_before_amount_is_excluded_from_transactions():
+    r = extract("The total came to $10,000 across four transfers of $2,500 each.")
+    assert [str(t.amount) for t in r.transactions] == ["2500"]
+    assert [t.value for t in r.stated_totals] == ["10000 USD"]
+
+
+def test_total_word_after_amount_binds_to_that_amount():
+    r = extract("I lost $10,000 total: $4,000 on 2026-04-01 and $6,000 on 2026-04-02.")
+    assert sorted(str(t.amount) for t in r.transactions) == ["4000", "6000"]
+    assert [t.value for t in r.stated_totals] == ["10000 USD"]
+
+
+def test_two_totals_in_one_paragraph_is_ambiguous_and_left_alone():
+    r = extract("I sent $2,000 and $3,000 total which combined came to $5,000.")
+    assert len(r.transactions) == 3
+    assert r.stated_totals == []
+    assert any("More than one amount" in n for n in r.notes)
+
+
+def test_lone_amount_is_never_demoted_to_a_total():
+    r = extract("Altogether I lost my savings. On 2026-02-01 I sent $700.")
+    assert [str(t.amount) for t in r.transactions] == ["700"]
+
+
+def test_repeated_amount_stays_two_transfers():
+    r = extract("I paid $500 and then another $500 the next day.")
+    assert [str(t.amount) for t in r.transactions] == ["500", "500"]

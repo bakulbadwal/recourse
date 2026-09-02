@@ -11,8 +11,10 @@ is legal advice.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
+from .intake import display_exchange
 from .models import NOT_PROVIDED, CaseFile, Transaction
 
 DRAFT_BANNER = (
@@ -145,7 +147,18 @@ def render_ic3_draft(case: CaseFile) -> str:
     has_usd = any(
         t.amount is not None and t.currency == "USD" for t in case.transactions
     )
-    if has_usd:
+    if case.stated_total is not None:
+        # The victim's own stated total goes on the form; the itemized sum is
+        # shown beside it so a disagreement is visible, never silently resolved.
+        lines.append(f"- Total loss amount (no $ or commas): {case.stated_total}"
+                     f" (the total as you stated it: '{case.stated_total_verbatim}')")
+        if has_usd and Decimal(case.stated_total) != usd_total:
+            lines.append(f"  NOTE: the itemized USD transfers below add up to "
+                         f"{usd_total}, not the total you stated. Reconcile before "
+                         "filing.")
+        elif has_usd:
+            lines.append("  (matches the sum of the itemized USD transfers below)")
+    elif has_usd:
         lines.append(f"- Total loss amount (no $ or commas): {usd_total}"
                      + (" (USD-denominated amounts only)" if non_usd else ""))
     else:
@@ -210,9 +223,20 @@ def render_ic3_draft(case: CaseFile) -> str:
         "narrative length.)"
     )
     lines.append("")
-    lines.append("Draft description (review and edit before pasting):")
+    if case.description:
+        lines.append(
+            "Draft description — composed by the assistant from your story. Every "
+            "hash, address, amount, and date in it was checked against your own "
+            "words by the audit before it was accepted; the wording is the "
+            "assistant's, so review it and edit anything that is not how you "
+            "would say it:"
+        )
+        description = case.description.strip()
+    else:
+        lines.append("Draft description (your story as you told it; review and "
+                     "edit before pasting):")
+        description = case.narrative.strip()
     lines.append("")
-    description = case.narrative.strip()
     if len(description) > IC3_DESCRIPTION_CHAR_LIMIT:
         lines.append(
             f"NOTE: your story is {len(description)} characters — over the "
@@ -228,7 +252,8 @@ def render_ic3_draft(case: CaseFile) -> str:
     lines.append("Paste technical details as text (email headers, crypto transaction "
                  "metadata); list reports filed with other agencies.")
     if case.exchanges:
-        lines.append("- Exchanges/platforms involved: " + ", ".join(case.exchanges))
+        lines.append("- Exchanges/platforms involved: "
+                     + ", ".join(display_exchange(x) for x in case.exchanges))
     else:
         lines.append(f"- Exchanges/platforms involved: {NOT_PROVIDED}")
     lines.append(f"- Reports filed with other agencies (FTC/police/exchange ticket "
@@ -280,6 +305,8 @@ def render_ic3_json(case: CaseFile) -> dict[str, Any]:
                 else None
             ),
             "non_usd_losses_needing_conversion": non_usd,
+            "stated_total_usd": case.stated_total,
+            "stated_total_verbatim": case.stated_total_verbatim,
             "transactions": [t.to_dict() for t in case.transactions[:IC3_MAX_TRANSACTIONS]],
             "overflow_transactions": [
                 t.to_dict() for t in case.transactions[IC3_MAX_TRANSACTIONS:]
@@ -292,9 +319,11 @@ def render_ic3_json(case: CaseFile) -> dict[str, Any]:
             "business_name_candidates": case.businesses,
         },
         "step5_description": {
-            "text": case.narrative.strip(),
+            "text": (case.description or case.narrative).strip(),
+            "composed_by_assistant": bool(case.description),
             "char_limit": IC3_DESCRIPTION_CHAR_LIMIT,
-            "over_limit": len(case.narrative.strip()) > IC3_DESCRIPTION_CHAR_LIMIT,
+            "over_limit": len((case.description or case.narrative).strip())
+            > IC3_DESCRIPTION_CHAR_LIMIT,
         },
         "step6_other_information": {
             "exchanges": case.exchanges,
@@ -311,11 +340,11 @@ def render_freeze_letter(case: CaseFile) -> str:
     Conservatively worded: exchanges act per their own compliance processes or
     legal process — a freeze is requested, never promised.
     """
-    exchange = case.exchanges[0] if case.exchanges else NOT_PROVIDED
+    exchange = display_exchange(case.exchanges[0]) if case.exchanges else NOT_PROVIDED
     v = case.victim
 
     lines: list[str] = []
-    lines.append("# Exchange Fraud Report & Freeze Request — DRAFT")
+    lines.append("# Exchange Fraud Report, Records Preservation & Freeze Request — DRAFT")
     lines.append("")
     lines.append(DRAFT_BANNER)
     lines.append(f"Case file: `{case.case_id}`")
@@ -324,19 +353,25 @@ def render_freeze_letter(case: CaseFile) -> str:
     lines.append(f"From: {_np(v.name)} ({_np(v.email)})")
     lines.append(f"Account identifier on your platform: {NOT_PROVIDED}")
     lines.append("")
-    lines.append("Subject: Fraud report — request to review and, where your policies "
-                 "allow, restrict the recipient account/funds")
+    lines.append("Subject: Fraud report — records preservation and, where your policies "
+                 "allow, review/restriction of the recipient account(s)")
     lines.append("")
     lines.append("Dear Fraud/Security team,")
     lines.append("")
+    # Honest about what an exchange can do: the destination is usually a
+    # scammer's external wallet, so the concrete asks are preservation and
+    # flagging; a freeze applies only where the funds land on-platform.
     lines.append(
         "I am reporting fraudulent transfers made from my account as the result of "
-        "a scam. I understand that account restrictions and freezes are governed by "
-        "your internal compliance processes and by legal process, and that no "
-        "specific outcome is guaranteed. I am providing complete transaction "
-        "details below so your team can review the recipient account and preserve "
-        "records for law enforcement. Time is critical: funds move quickly once a "
-        "scam is discovered."
+        "a scam. The destination addresses below are controlled by the scammer and "
+        "may not be on your platform. I am asking that you (1) preserve all records "
+        "relating to these transfers and to the destination addresses, (2) flag the "
+        "destination addresses in your systems, and (3) where any destination or "
+        "downstream address is associated with an account on your platform, review "
+        "it and, where your policies allow, restrict it. I understand that account "
+        "restrictions and freezes are governed by your internal compliance processes "
+        "and by legal process, and that no specific outcome is guaranteed. Time is "
+        "critical: funds move quickly once a scam is discovered."
     )
     lines.append("")
     lines.append("## Fraudulent transactions")
@@ -408,7 +443,11 @@ def render_action_plan(case: CaseFile) -> str:
     lines.append("Steps are ordered by urgency. Do them top to bottom.")
     lines.append("")
 
-    exchange_str = ", ".join(case.exchanges) if case.exchanges else "the exchange(s) you used"
+    exchange_str = (
+        ", ".join(display_exchange(x) for x in case.exchanges)
+        if case.exchanges
+        else "the exchange(s) you used"
+    )
     lines.append("## 1. Contact the exchange fraud team(s) — NOW")
     lines.append(f"- Who: {exchange_str}.")
     lines.append(

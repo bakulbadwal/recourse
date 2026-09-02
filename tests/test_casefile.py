@@ -105,3 +105,18 @@ def test_asset_is_part_of_the_case_id():
     a = build_casefile("On 2026-02-14 I sent $8,000 worth of ETH.")
     b = build_casefile("On 2026-02-14 I sent $8,000 to him.")
     assert a.case_id != b.case_id
+
+
+def test_stated_total_lands_on_the_casefile():
+    case = build_casefile("I lost $10,000 total: $4,000 on 2026-04-01 and $6,000 on 2026-04-02.")
+    assert case.stated_total == "10000"
+    assert case.stated_total_verbatim == "$10,000"
+
+
+def test_description_is_excluded_from_the_case_id_but_round_trips():
+    case = build_casefile(STORY)
+    original = case.case_id
+    case.description = "A composed description."
+    assert case.case_id == original
+    restored = CaseFile.from_dict(json.loads(json.dumps(case.to_dict())))
+    assert restored.description == "A composed description."
