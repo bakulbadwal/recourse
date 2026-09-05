@@ -35,7 +35,7 @@ recourse = "recourse.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-recourse = ["data/*.txt"]
+recourse = ["data/*.txt", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,8 +1,9 @@
 # Recourse — Architecture
 
-One page. The whole design serves a single rule: **deterministic Python owns every fact; the
-model narrates and structures only.** A filing draft with one invented hash is worse than no
-draft, so the system is built so invention is structurally impossible, then audited anyway.
+The design centers on a single boundary: **deterministic Python owns extraction and structured
+fields; optional model-written narrative is gated by an audit.** A filing draft with an invented
+hash can be worse than no draft. Source quotes, deterministic templates, and runtime checks
+reduce that risk; they do not establish complete factual correctness or replace human review.
 
 ```mermaid
 flowchart LR
@@ -68,8 +69,33 @@ flowchart LR
    IC3 Step 5 narrative, via `propose_description` — is gated by the same audit the eval runs:
    any untraceable hash, address, amount, or date rejects the text with the violations listed. The system prompt forbids the model from stating any
    hash/amount/date not present in tool output and forbids filling in `[NOT PROVIDED]` fields.
-   Because the filings are rendered by code, the model could not inject a fact into them even
-   if it ignored the prompt — the prompt is a second fence, not the wall.
+   Structured fields are rendered by code. The optional description is model-authored prose,
+   so its audit is a separate boundary with explicit limits: it cannot catch every assertion,
+   number written out in words, or association between two otherwise source-backed facts.
+
+6. **Local workbench (`workbench.py`, `web/`).** A stdlib HTTP server binds only to
+   `127.0.0.1`. The packaged HTML/CSS/JavaScript interface submits a story, then displays the
+   existing CaseFile and templates as literal text. Every build runs `verify_no_invention`;
+   a failed audit stays inspectable and blocks export. ZIP requests rebuild from the story
+   and rerun the audit, rather than accepting client-provided case fields or rendered files.
+   ZIP entries have fixed timestamps, names, order, and permissions, with the CLI's exact
+   UTF-8 file contents. No story is written to the server's filesystem or a case registry.
+
+   Only `/`, `/assets/workbench.css`, `/assets/workbench.js`, and `/api/example` accept
+   GET/HEAD. Only `/api/case` and `/api/bundle` accept POST. Requests containing query
+   strings, alternative asset paths, or caller-supplied case data are rejected. Write requests
+   require an exact local Host/Origin pair and a custom same-origin header; no CORS allowance
+   is returned. Bodies are limited to 64 KiB, stories to 16,000 characters, and sockets have
+   a ten-second timeout. Content-Length must be singular; transfer/content encodings are
+   rejected. Responses disable caching and framing and apply a restrictive CSP. Default
+   request logging and source-bearing tracebacks are suppressed.
+
+   The UI renders story-derived content with `textContent`/`value`, never HTML or Markdown
+   interpretation. Edits mark the previous result stale and disable file downloads until a
+   rebuild. Source quotes can be selected in the input, and missing fields and the audit's
+   limits remain visible. The interface does not collect complainant identity or run the
+   optional interview. Browser/OS memory, extensions, and downloaded files are outside its
+   storage boundary; this is a local utility, not a production hosting service.
 
 ## Why this shape wins for a fraud victim
 

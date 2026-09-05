@@ -2,9 +2,10 @@
 
     python -m recourse intake story.txt --out casedir/
     python -m recourse demo
+    python -m recourse serve
 
-Writes casefile.json, ic3_draft.md, freeze_letter.md, action_plan.md, and
-unverified.md. Pure offline: no model, no network, no API key.
+Intake/demo write casefile.json and four filing drafts. Serve runs a
+loopback-only workbench. All three need no model, external network, or API key.
 """
 
 from __future__ import annotations
@@ -89,6 +90,11 @@ def main(argv: list[str] | None = None) -> int:
     p_demo.add_argument("--out", default=None, help="Output directory")
     p_demo.set_defaults(func=_cmd_demo)
 
+    p_serve = sub.add_parser("serve", help="Open the offline localhost browser workbench")
+    p_serve.add_argument("--port", type=_port, default=8765,
+                         help="Local port (default: 8765; 0 chooses a free port)")
+    p_serve.set_defaults(func=_cmd_serve)
+
     p_chat = sub.add_parser(
         "chat",
         help="Interactive interview with the Strands agent (needs the [agent] extra "
@@ -98,6 +104,22 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return args.func(args)
+
+
+def _port(value: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("port must be an integer from 0 to 65535") from exc
+    if not 0 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be from 0 to 65535")
+    return port
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    from .workbench import serve
+
+    return serve(port=args.port)
 
 
 def _cmd_chat(args: argparse.Namespace) -> int:  # pragma: no cover - interactive

@@ -1,7 +1,8 @@
 # Recourse
 
-**A first-response agent for fraud victims.** Paste your story — plain language plus whatever
-fragments you have (transaction hashes, wallet addresses, amounts, dates, URLs, emails) — and
+**A local evidence workbench for fraud response, with an optional interview agent.**
+Paste your story — plain language plus whatever fragments you have (transaction hashes,
+wallet addresses, amounts, dates, URLs, emails) — and
 Recourse turns it into a reviewable evidence record and ready-to-review filing drafts, in minutes,
 while acting fast still matters.
 
@@ -18,8 +19,8 @@ panicked victim can't produce one.
 
 From one pasted story, Recourse produces:
 
-1. **`casefile.json`** — a canonical CaseFile: deduped, timeline-ordered evidence with explicit
-   verified-vs-`[NOT PROVIDED]` fields and a stable case id (sha256 of normalized contents).
+1. **`casefile.json`** — a canonical CaseFile: deduped, timeline-ordered evidence with exact
+   source quotes, explicit missing fields, and a stable case id (sha256 of normalized contents).
 2. **`ic3_draft.md`** — an FBI IC3 complaint draft mapped to the real form's seven steps
    (complaint type, victim info, financial transactions, subjects, description, other info,
    signature), respecting the form's actual mechanics (10-transaction cap, 3,500-character
@@ -32,7 +33,7 @@ From one pasted story, Recourse produces:
 5. **`unverified.md`** — an explicit list of everything that could **not** be verified or was
    not provided. Nothing is ever guessed.
 
-## Quickstart — offline mode (no API key, no network, no model)
+## Quickstart — offline mode (no API key, no external network, no model)
 
 ```bash
 git clone https://github.com/bakulbadwal/recourse && cd recourse
@@ -46,8 +47,52 @@ python -m recourse demo --out demo-case/
 python -m recourse intake my_story.txt --out my-case/
 ```
 
-That is the entire product working end to end: five files, deterministic, reproducible —
+The CLI produces five files, deterministic and reproducible —
 same story in, same case id and same drafts out, on any machine, any day.
+
+## The local browser workbench
+
+Run `python -m recourse serve`, then open [127.0.0.1:8765](http://127.0.0.1:8765).
+Use `--port 9876` to choose another port, or `--port 0` for a free one. The terminal prints
+the address. Stop with **Ctrl+C**. The workbench adds no dependencies to the base install.
+
+1. **Paste your story or load the fictional example.** Keep each transfer in its own paragraph.
+   Use **Cmd/Ctrl + Enter** to build. Input is limited to 16,000 characters and a 64 KiB request.
+2. **Inspect evidence.** Search extracted values and compare them with their exact source quotes.
+   “Locate quote in story” selects the original words. Open the transfer timeline to review
+   the extractor's groupings; nearby facts are not proof that they belong together.
+3. **Review gaps and drafts.** The same engine's missing-information notes remain visible.
+   Preview the IC3 complaint, freeze request, action plan, unverified report, and CaseFile JSON.
+   Drafts are displayed as literal text; source URLs are not opened automatically.
+4. **Download your record.** The ZIP contains exactly the five files listed above, with the same
+   contents as the offline CLI. Individual files can also be downloaded. Changing the story
+   disables downloads until you rebuild; a failed source audit also blocks export.
+
+The UI supports keyboard navigation (arrow keys and Home/End in the review tabs), visible
+focus, announced status/error messages, and narrow screens. A responsive layout does not expose
+the server to other devices: it always binds to `127.0.0.1`.
+
+**Local processing, draft-only output.** Stories travel from the page to the Python process
+on your own computer. The workbench does not write stories to disk, keep a case database, log
+request bodies or URLs, call a model, or contact institutions. All assets are bundled; there are
+no remote scripts, fonts, or analytics. Clear the page to start again, and download any record
+you want to keep. Downloaded files contain the story and must be handled as your own records.
+
+**Source checks are not independent verification.** Each build and ZIP request runs
+`build_casefile` → `render_all` → `verify_no_invention`. The audit covers its supported
+numeric, date, and identifier patterns; it cannot establish what happened, validate a
+counterparty, catch every unsupported statement, or detect every incorrect association.
+Complainant identity remains blank in this interface; complete it in the downloaded drafts.
+
+This server is intended for a local session, not public hosting. It serves only an explicit
+list of packaged assets and API routes, enforces request limits and timeouts, checks Host
+and same-origin write requests, and applies a restrictive Content Security Policy. It does
+not serve the repository or expose a `--host` option.
+
+![Recourse local workbench](docs/workbench-desktop.png)
+
+*Actual local browser capture, September 5, 2026. The interface is an additional local workflow;
+the CLI and optional Strands interview remain available.*
 
 ## Quickstart — agent mode (optional, interactive)
 
@@ -65,7 +110,7 @@ fragments and shame, not a clean story. Nine Strands `@tool`s, each guarding one
 
 | Tool | What it does | Boundary it enforces |
 |---|---|---|
-| `build_case_file` | Extracts the evidence record from the story, verbatim | Every fact is a literal substring of the story |
+| `build_case_file` | Extracts the evidence record from the story | Every extracted item carries a literal source quote |
 | `add_detail` | Appends what the victim says later and rebuilds the case | Later facts enter the same way, with the same provenance |
 | `set_complainant` | Records the victim's own identity for IC3 Step 2 | The only door for identity — never inferred from the story |
 | `propose_description` | Accepts a model-written IC3 Step 5 narrative **only if the audit passes** | The one place the model authors filing content, gated by `audit.py` |
@@ -101,12 +146,13 @@ flowchart LR
     end
 ```
 
-**Deterministic Python owns every fact.** Extraction is pure regex/parsing — no model is
+**Deterministic Python owns extraction and structured fields.** Extraction is pure regex/parsing — no model is
 involved. Hashes, addresses, amounts, dates, and field mappings are computed and rendered by
 code. The (optional) model layer narrates, structures the conversation, and asks the victim for
 missing fields; its system prompt forbids stating any hash/amount/date not present in tool
-output, and even if it tried, the filings themselves are rendered by templates the model never
-touches.
+output. A model-written Step 5 description must pass the runtime audit before a template
+includes it. That audit checks supported tokens, not every assertion or association; the
+victim's review remains necessary.
 
 A filing draft with one wrong hash is worse than no draft at all — this boundary is the product.
 
@@ -114,7 +160,7 @@ A filing draft with one wrong hash is worse than no draft at all — this bounda
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                    # 140+ unit tests
+pytest -q                    # engine, agent wrappers, CLI, and localhost HTTP tests
 python evals/run_evals.py    # the gate; non-zero exit on any failure
 ```
 
@@ -165,10 +211,12 @@ story used in the demo video), the gate checks that:
 ## Hackathon statements
 
 - **Track:** Good Neighbor — an agent that does real work for real people at one of the worst
-  moments of their financial lives, end to end: story in, filed-ready drafts and an ordered plan
+  moments of their financial lives, end to end: story in, reviewable drafts and an ordered plan
   out.
-- **AI-assistance disclosure:** built during the submission window with AI coding assistants,
-  per hackathon rules; all code net-new for this project.
+- **AI-assistance disclosure:** the original hackathon implementation was built during the
+  submission window with AI coding assistants, per hackathon rules; code was net-new for this
+  project. The localhost workbench was added on September 5, 2026 and is documented separately
+  in [the change record](docs/ASTRA_CHANGELOG_2026-09-05.md).
 - **Example data:** every story in `examples/` and `evals/golden/` is synthetic — fictional
   people, invented hashes/addresses, `.example` domains.
 - **License:** Apache-2.0 (see `LICENSE`).
@@ -183,7 +231,9 @@ src/recourse/
   audit.py      anti-invention provenance audit
   tools.py      Strands @tool wrappers (lazy import; base install needs no strands)
   agent.py      build_agent(): Anthropic provider or Bedrock default
-  cli.py        offline pipeline: python -m recourse intake|demo
+  workbench.py  stateless loopback HTTP server, audited case reviews and ZIPs
+  web/          packaged browser interface (plain HTML/CSS/JavaScript)
+  cli.py        python -m recourse intake|demo|serve|chat
 evals/          golden stories + expected extractions + the gate
 tests/          unit tests (pytest)
 ```

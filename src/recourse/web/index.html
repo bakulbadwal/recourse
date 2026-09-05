@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="A local evidence workbench. Turn your account of fraud into a reviewable record and filing drafts.">
+  <title>Recourse — Evidence workbench</title>
+  <link rel="stylesheet" href="/assets/workbench.css">
+  <script src="/assets/workbench.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#story">Skip to your story</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="Recourse home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 28"><path d="M8 21V7h6a5 5 0 0 1 0 10H8m7 0 6 4"/></svg></span>
+        <span>recourse<span class="brand-period">.</span></span>
+      </a>
+      <span class="header-label">EVIDENCE WORKBENCH</span>
+      <span class="local-badge"><span class="status-dot" aria-hidden="true"></span>Local session</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">A FIRST STEP FORWARD</p>
+        <h1 id="page-title">Make sense of<br>what happened.</h1>
+        <p class="hero-copy">Start with what you remember. Turn your story into a clear evidence record and drafts you can review, one step at a time.</p>
+      </div>
+      <div class="hero-note">
+        <span class="note-symbol" aria-hidden="true">↗</span>
+        <p>Your words are the source.<br><strong>Nothing gets filed for you.</strong></p>
+        <span class="small-label">NO ACCOUNT · NO MODEL · LOCAL ONLY</span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="intake-card" aria-labelledby="intake-title">
+        <div class="section-heading"><span class="step-number">01</span><h2 id="intake-title">Start with your story</h2></div>
+        <p class="section-copy">Fragments are enough to begin. You can add details and rebuild whenever you’re ready.</p>
+        <form id="story-form">
+          <div class="field-heading"><label for="story">What happened?</label><button class="text-button" id="example-button" type="button">Try a fictional example <span aria-hidden="true">↗</span></button></div>
+          <textarea id="story" name="story" rows="13" maxlength="16000" required spellcheck="false" autocomplete="off" autocapitalize="off" aria-describedby="story-help story-count" placeholder="Describe what happened in your own words.&#10;&#10;Include anything you have: dates, amounts, how you paid, transaction IDs, wallet addresses, websites, or messages.&#10;&#10;Use a new paragraph for each transfer. Leave out passwords, private keys, and recovery phrases."></textarea>
+          <div class="input-meta"><span id="example-label" hidden>FICTIONAL EXAMPLE</span><span id="story-count">0 / 16,000 characters</span></div>
+          <p class="field-help" id="story-help">Only details you provide can become evidence. A blank field stays <code>[NOT PROVIDED]</code>.</p>
+          <button class="primary-button" id="build-button" type="submit"><span>Build my case file</span><span aria-hidden="true">→</span></button>
+          <div class="form-tools"><span class="shortcut-hint"><kbd>⌘</kbd> / <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to build</span><button class="text-button muted-button" id="clear-button" type="button">Clear story</button></div>
+        </form>
+        <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+        <p id="error-message" class="error-message" role="alert" hidden></p>
+        <div class="privacy-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 5 8 10 8 10s8-5 8-10V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg><p><strong>Processed on your computer.</strong> This workbench sends your story only to its local Python process. It saves no cases. Download what you need before closing.</p></div>
+        <details class="help-details"><summary>What should I review before filing?</summary><p>Check every amount, date, address, and transaction grouping against your records. Business names are candidates to confirm. Nothing is checked with an institution or on a blockchain.</p><p>The browser leaves complainant identity fields blank. Complete those in your downloaded drafts. Recourse prepares drafts for your review and is not legal advice.</p></details>
+      </section>
+
+      <section class="review-desk" aria-labelledby="desk-title">
+        <div class="desk-heading"><div class="section-heading"><span class="step-number">02</span><h2 id="desk-title">Your review desk</h2></div><span class="draft-label">DRAFTS ONLY</span></div>
+        <div class="empty-desk" id="empty-desk">
+          <div class="paper-stack" aria-hidden="true"><div class="paper-back"></div><div class="paper-front"><span class="paper-eyebrow">CASE RECORD</span><div class="paper-rule dark"></div><div class="paper-rule"></div><div class="paper-rule short"></div><div class="paper-quote"><span>“</span><div><i></i><i></i></div></div><div class="paper-check">✓ <span>SOURCE ATTACHED</span></div></div><span class="paper-seal">R.</span></div>
+          <p class="eyebrow">FROM FRAGMENTS TO A RECORD</p>
+          <h3>A clearer picture starts here.</h3>
+          <p class="empty-copy">Add your story, or explore the fictional example.<br>Your record will appear here, ready to inspect.</p>
+          <ol class="preview-steps">
+            <li><span class="preview-icon" aria-hidden="true">“</span><div><strong>Evidence you can trace</strong><p>Every extracted detail beside its exact source words.</p></div></li>
+            <li><span class="preview-icon" aria-hidden="true">?</span><div><strong>Room for what’s missing</strong><p>Open questions stay visible. You fill the gaps.</p></div></li>
+            <li><span class="preview-icon" aria-hidden="true">↗</span><div><strong>Four drafts. One case record.</strong><p>Review here, then download a five-file bundle.</p></div></li>
+          </ol>
+        </div>
+
+        <div id="case-results" hidden>
+          <div class="case-banner"><div><p class="eyebrow" id="case-kind">YOUR CASE RECORD</p><h3 id="case-title" tabindex="-1">Ready for your review.</h3><p class="case-id" id="case-id"></p></div><span class="record-icon" aria-hidden="true">↳</span></div>
+          <div class="stale-note" id="stale-note" role="status" hidden>Your story has changed. These results are from your previous build. Rebuild to update them and enable downloads.</div>
+          <div class="case-metrics"><div><strong id="evidence-count">0</strong><span>source items</span></div><div><strong id="transaction-count">0</strong><span>reconstructed transfers</span></div><div><strong id="note-count">0</strong><span>review notes</span></div></div>
+          <details class="audit-banner" id="audit-banner"><summary><span class="audit-dot" aria-hidden="true"></span><span id="audit-title">Source checks passed</span><span class="audit-more">What this means</span></summary><p>Checks trace supported hashes, addresses, amounts, and dates to your story or declared calculations. They do not verify events or institutions, catch every error, or confirm that facts belong to the right transfer.</p><ul id="audit-violations" hidden></ul></details>
+
+          <div class="view-tabs" id="view-tabs" role="tablist" aria-label="Case review views">
+            <button id="tab-evidence" role="tab" type="button" aria-selected="true" aria-controls="panel-evidence">Evidence <span id="tab-evidence-count">0</span></button>
+            <button id="tab-notes" role="tab" type="button" aria-selected="false" aria-controls="panel-notes" tabindex="-1">Review gaps <span id="tab-note-count">0</span></button>
+            <button id="tab-drafts" role="tab" type="button" aria-selected="false" aria-controls="panel-drafts" tabindex="-1">Drafts <span>4</span></button>
+          </div>
+
+          <section class="tab-panel" id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" tabindex="0">
+            <div class="panel-heading"><div><h3>The details in your words</h3><p>Extracted from your story. Not independently verified.</p></div></div>
+            <label class="search-label" for="evidence-search">Filter evidence</label>
+            <div class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg><input id="evidence-search" type="search" placeholder="Search a value, quote, or evidence type" autocomplete="off"></div>
+            <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
+            <ul id="evidence-list" class="evidence-list"></ul>
+            <details class="timeline" id="timeline"><summary>Reconstructed transfer timeline <span id="timeline-count"></span></summary><p class="timeline-help">Nearby facts are grouped by the extractor. Confirm that each amount, date, hash, and address belongs to the same transfer.</p><ol id="transaction-list"></ol></details>
+          </section>
+
+          <section class="tab-panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" tabindex="0" hidden>
+            <div class="panel-heading"><div><h3>Keep the open questions visible.</h3><p>These notes come from the case engine. Add details to your story and rebuild, or complete missing fields in your drafts.</p></div></div>
+            <ol id="notes-list" class="notes-list"></ol>
+          </section>
+
+          <section class="tab-panel" id="panel-drafts" role="tabpanel" aria-labelledby="tab-drafts" tabindex="0" hidden>
+            <div class="panel-heading"><div><h3>Prepare now. Review before filing.</h3><p>These are local, plain-text drafts. Nothing has been submitted or sent.</p></div></div>
+            <div class="file-picker" id="file-picker" role="group" aria-label="Choose a file to preview">
+              <button type="button" data-file="ic3_draft.md" aria-pressed="true">IC3 complaint</button>
+              <button type="button" data-file="freeze_letter.md" aria-pressed="false">Freeze request</button>
+              <button type="button" data-file="action_plan.md" aria-pressed="false">Action plan</button>
+              <button type="button" data-file="unverified.md" aria-pressed="false">Unverified report</button>
+              <button type="button" data-file="casefile.json" aria-pressed="false">Case JSON</button>
+            </div>
+            <div class="document-preview"><div class="document-toolbar"><span id="document-name">ic3_draft.md</span><button id="file-download" class="text-button" type="button" disabled>Download file <span aria-hidden="true">↓</span></button></div><pre id="document-content" tabindex="0" aria-label="Plain-text file preview"></pre></div>
+            <p class="document-note">Source URLs and text are shown literally. Review destinations yourself before using a downloaded draft.</p>
+          </section>
+
+          <div class="export-bar"><div><strong>Take your record with you.</strong><p>Case JSON + four Markdown drafts · ZIP</p></div><button class="primary-button compact" id="bundle-download" type="button" disabled>Download bundle <span aria-hidden="true">↓</span></button></div>
+        </div>
+      </section>
+    </div>
+    <footer class="site-footer"><p><strong>Recourse</strong> <span aria-hidden="true">/</span> A first step, grounded in your words.</p><p>Drafts for your review. Not legal advice.</p></footer>
+  </main>
+  <noscript><p class="no-script">This workbench needs JavaScript to send your story to the local engine. You can also use <code>python -m recourse intake story.txt --out case/</code> in your terminal.</p></noscript>
+</body>
+</html>
