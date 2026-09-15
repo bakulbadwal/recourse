@@ -131,6 +131,8 @@ story instead.
 
 ## Architecture: the model is not allowed to know numbers
 
+![Recourse architecture — deterministic Python owns every fact; the Strands agent narrates and is audited](docs/architecture.png)
+
 ```mermaid
 flowchart LR
     A[Victim's story\nplain text] --> B[intake.py\nregex/parser extractors]
